@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Logger = MiscUtils.Logging.SimpleLogger;
 
-namespace MS2Lib
+namespace MS2Lib.Decrypt
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class MS2FileHeader : MS2SizeHeader

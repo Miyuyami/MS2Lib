@@ -6,7 +6,7 @@ using MiscUtils.IO;
 using static MS2Lib.CryptoHelper;
 using DLogger = MiscUtils.Logging.DebugLogger;
 
-namespace MS2Lib
+namespace MS2Lib.Decrypt
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class MS2File

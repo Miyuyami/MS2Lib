@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using static MS2Lib.CryptoHelper;
 using Logger = MiscUtils.Logging.SimpleLogger;
 
-namespace MS2Lib
+namespace MS2Lib.Decrypt
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class MS2Archive : IDisposable
