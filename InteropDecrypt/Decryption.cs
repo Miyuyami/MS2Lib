@@ -1,14 +1,9 @@
-﻿using System;
-using System.Runtime.InteropServices;
-using static System.Runtime.InteropServices.RuntimeInformation;
+﻿using static MS2Lib.Helpers;
 
 namespace MS2Lib
 {
     public static class Decryption
     {
-        private static readonly bool Is64Bit = IntPtr.Size == 8;
-        //private static readonly bool Is64Bit = ProcessArchitecture == Architecture.Arm64 || ProcessArchitecture == Architecture.X64;
-
         public static byte[] Decrypt(byte[] src, uint dstSize, byte[] key, byte[] iv)
         {
             byte[] dst = new byte[dstSize];
