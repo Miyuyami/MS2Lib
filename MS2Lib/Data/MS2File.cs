@@ -15,7 +15,8 @@ namespace MS2Lib
         private readonly MemoryMappedFile DataFile;
 
         public string Name => this.InfoHeader.Name;
-        public string Id => this.InfoHeader.Id;
+        public uint Id => this.Header.Id;
+        public uint Size => this.Header.Size;
         public bool IsCompressed
         {
             get

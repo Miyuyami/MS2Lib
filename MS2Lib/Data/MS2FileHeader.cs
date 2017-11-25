@@ -58,7 +58,7 @@ namespace MS2Lib
                 }
                 if (unk2 != 0)
                 {
-                    Logger.Debug($"File Header unk2 is \"{unk2}\".");
+                    Logger.Debug($"File Header second unk is \"{unk2}\".");
                 }
 
                 return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, fileType);

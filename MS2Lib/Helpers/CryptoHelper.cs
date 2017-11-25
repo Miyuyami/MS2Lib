@@ -13,6 +13,11 @@ namespace MS2Lib
 
         public static async Task<byte[]> DecryptStreamToDataAsync(MS2CryptoMode decryptionMode, MS2SizeHeader header, bool isCompressed, Stream stream)
         {
+            if (header.EncodedSize == 0 || header.CompressedSize == 0 || header.Size == 0)
+            {
+                return new byte[0];
+            }
+
             byte[] buffer = new byte[header.EncodedSize];
             int readBytes = await stream.ReadAsync(buffer, 0, (int)header.EncodedSize).ConfigureAwait(false);
             if ((uint)readBytes != header.EncodedSize)
