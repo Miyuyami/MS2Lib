@@ -16,6 +16,21 @@ namespace MS2Lib
 
         public string Name => this.InfoHeader.Name;
         public string Id => this.InfoHeader.Id;
+        public bool IsCompressed
+        {
+            get
+            {
+                switch (this.Header.TypeId)
+                {
+                    case 4278190080u:
+                        return false;
+                    case 3992977408u:
+                        return false;
+                    default:
+                        return true;
+                }
+            }
+        }
         public MS2FileInfoHeader InfoHeader { get; }
         public MS2FileHeader Header { get; }
 
@@ -44,7 +59,7 @@ namespace MS2Lib
 
             using (dataStream)
             {
-                Stream stream = await DecryptStreamToStreamAsync(this.ArchiveDecryptionMode, this.Header, dataStream).ConfigureAwait(false);
+                Stream stream = await DecryptStreamToStreamAsync(this.ArchiveDecryptionMode, this.Header, this.IsCompressed, dataStream).ConfigureAwait(false);
 
                 return stream;
             }

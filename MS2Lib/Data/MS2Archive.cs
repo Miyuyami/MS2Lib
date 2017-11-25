@@ -126,8 +126,9 @@ namespace MS2Lib
         {
             MS2File[] files = new MS2File[fileCount];
 
-            using (Stream headerStream = await DecryptStreamToStreamAsync(decryptionMode, header, br.BaseStream).ConfigureAwait(false))
-            using (Stream dataStream = await DecryptStreamToStreamAsync(decryptionMode, data, br.BaseStream).ConfigureAwait(false))
+            // TODO: are those always compressed?
+            using (Stream headerStream = await DecryptStreamToStreamAsync(decryptionMode, header, true, br.BaseStream).ConfigureAwait(false))
+            using (Stream dataStream = await DecryptStreamToStreamAsync(decryptionMode, data, true, br.BaseStream).ConfigureAwait(false))
             {
                 for (int i = 0; i < fileCount; i++)
                 {
