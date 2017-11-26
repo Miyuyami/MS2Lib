@@ -3,13 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MS2Lib", "MS2Lib\MS2Lib.csproj", "{0697E002-C1EB-4878-8675-B1B4DA58048F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MS2Lib", "MS2Lib\MS2Lib.csproj", "{0697E002-C1EB-4878-8675-B1B4DA58048F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Decrypt", "Decrypt\Decrypt.vcxproj", "{74437649-BB70-41F0-8026-27A567443AE1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteropDecrypt", "InteropDecrypt\InteropDecrypt.csproj", "{CDAFB96A-7E7C-4F8A-B52C-34169646BBEB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InteropDecrypt", "InteropDecrypt\InteropDecrypt.csproj", "{CDAFB96A-7E7C-4F8A-B52C-34169646BBEB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MiscUtils", "..\..\..\..\Users\Miyu\Documents\GitHub\MiscUtils\MiscUtils\MiscUtils.csproj", "{121818D3-6873-4F90-B19C-16A74C9EFEE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testing", "Testing\Testing.csproj", "{3D879B08-D699-46EE-8CA1-838F5AED1C93}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +69,18 @@ Global
 		{121818D3-6873-4F90-B19C-16A74C9EFEE7}.Release|x64.Build.0 = Release|x64
 		{121818D3-6873-4F90-B19C-16A74C9EFEE7}.Release|x86.ActiveCfg = Release|x86
 		{121818D3-6873-4F90-B19C-16A74C9EFEE7}.Release|x86.Build.0 = Release|x86
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Debug|x64.Build.0 = Debug|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Debug|x86.Build.0 = Debug|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Release|x64.ActiveCfg = Release|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Release|x64.Build.0 = Release|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Release|x86.ActiveCfg = Release|Any CPU
+		{3D879B08-D699-46EE-8CA1-838F5AED1C93}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
