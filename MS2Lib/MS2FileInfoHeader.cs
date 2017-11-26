@@ -2,11 +2,12 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using MiscUtils.IO;
 using DLogger = MiscUtils.Logging.DebugLogger;
 
-namespace MS2Lib.Decrypt
+namespace MS2Lib
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class MS2FileInfoHeader
@@ -23,7 +24,16 @@ namespace MS2Lib.Decrypt
             this.Properties = properties;
         }
 
-        public static async Task<MS2FileInfoHeader> Create(Stream stream)
+        public static MS2FileInfoHeader Create(string id, MS2FileInfoHeader other)
+        {
+            string[] properties = new string[other.Properties.Count];
+            other.Properties.CopyTo(properties, 0);
+            properties[0] = id;
+
+            return new MS2FileInfoHeader(Array.AsReadOnly(properties));
+        }
+
+        public static async Task<MS2FileInfoHeader> Load(Stream stream)
         {
             using (var usr = new UnbufferedStreamReader(stream, true))
             {
@@ -35,6 +45,19 @@ namespace MS2Lib.Decrypt
                 var result = new MS2FileInfoHeader(propertiesCollection);
 
                 return result;
+            }
+        }
+
+        public Task Save(string filePath)
+            => this.Save(File.OpenWrite(filePath));
+
+        public async Task Save(Stream stream)
+        {
+            using (var sw = new UnbufferedStreamWriter(stream, Encoding.ASCII, true))
+            {
+                string line = String.Join(",", this.Properties);
+
+                await sw.WriteLineAsync(line);
             }
         }
 
