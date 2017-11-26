@@ -24,7 +24,7 @@ namespace MS2Lib
             this.Properties = properties;
         }
 
-        public static MS2FileInfoHeader Create(string id, MS2FileInfoHeader other)
+        internal static MS2FileInfoHeader Create(string id, MS2FileInfoHeader other)
         {
             string[] properties = new string[other.Properties.Count];
             other.Properties.CopyTo(properties, 0);
@@ -33,7 +33,7 @@ namespace MS2Lib
             return new MS2FileInfoHeader(Array.AsReadOnly(properties));
         }
 
-        public static async Task<MS2FileInfoHeader> Load(Stream stream)
+        internal static async Task<MS2FileInfoHeader> Load(Stream stream)
         {
             using (var usr = new UnbufferedStreamReader(stream, true))
             {
@@ -48,10 +48,10 @@ namespace MS2Lib
             }
         }
 
-        public Task Save(string filePath)
+        internal Task Save(string filePath)
             => this.Save(File.OpenWrite(filePath));
 
-        public async Task Save(Stream stream)
+        internal async Task Save(Stream stream)
         {
             using (var sw = new UnbufferedStreamWriter(stream, Encoding.ASCII, true))
             {

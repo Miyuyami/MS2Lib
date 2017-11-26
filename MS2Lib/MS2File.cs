@@ -24,8 +24,7 @@ namespace MS2Lib
         {
             get
             {
-                return true; // TODO: fix this
-                switch (this.Header.TypeId)
+                switch (this.TypeId)
                 {
                     case 4278190080u:
                         return false;
@@ -78,7 +77,10 @@ namespace MS2Lib
             this.IsDataEncrypted = false;
         }
 
-        public static async Task<MS2File> Load(MS2CryptoMode cryptoMode, Stream headerStream, Stream dataStream, MemoryMappedFile dataMemoryMappedFile)
+        public static MS2File Create(MS2FileInfoHeader infoHeader, uint typeId, MS2CryptoMode archiveCryptoMode, Stream dataStream)
+            => new MS2File(infoHeader, typeId, archiveCryptoMode, dataStream);
+
+        internal static async Task<MS2File> Load(MS2CryptoMode cryptoMode, Stream headerStream, Stream dataStream, MemoryMappedFile dataMemoryMappedFile)
         {
             MS2FileInfoHeader fileInfoHeader = await MS2FileInfoHeader.Load(headerStream).ConfigureAwait(false);
             MS2FileHeader fileHeader = await MS2FileHeader.Load(cryptoMode, dataStream).ConfigureAwait(false);

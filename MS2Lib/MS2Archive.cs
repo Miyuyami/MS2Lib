@@ -207,16 +207,14 @@ namespace MS2Lib
             }
 
             using (var bwHeader = new BinaryWriter(headerStream, Encoding.ASCII, true))
-            using (encryptedHeaderStream)
-            using (encryptedDataHeaderStream)
             {
                 switch (cryptoMode)
                 {
                     case MS2CryptoMode.MS2F:
-                        await SaveMS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader, encryptedHeaderStream, encryptedDataHeaderStream).ConfigureAwait(false);
+                        await SaveMS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
                         break;
                     case MS2CryptoMode.NS2F:
-                        await SaveNS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader, encryptedHeaderStream, encryptedDataHeaderStream).ConfigureAwait(false);
+                        await SaveNS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
                         break;
                     default:
                     case MS2CryptoMode.OS2F:
@@ -224,9 +222,16 @@ namespace MS2Lib
                         throw new NotImplementedException();
                 }
             }
+
+            using (encryptedHeaderStream)
+            using (encryptedDataHeaderStream)
+            {
+                await encryptedHeaderStream.CopyToAsync(headerStream).ConfigureAwait(false);
+                await encryptedDataHeaderStream.CopyToAsync(headerStream).ConfigureAwait(false);
+            }
         }
 
-        private static Task SaveMS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader, Stream encryptedHeaderStream, Stream encryptedDataHeaderStream)
+        private static Task SaveMS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader)
         {
             return Task.Run(async () =>
             {
@@ -248,14 +253,10 @@ namespace MS2Lib
                 bwHeader.Write(fileCount); bwHeader.Write(0u);
                 // dataSize
                 bwHeader.Write(dataHeader.Size); bwHeader.Write(0u);
-
-                Stream stream = bwHeader.BaseStream;
-                await encryptedHeaderStream.CopyToAsync(stream).ConfigureAwait(false);
-                await encryptedDataHeaderStream.CopyToAsync(stream).ConfigureAwait(false);
             });
         }
 
-        private static async Task SaveNS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader, Stream encryptedHeaderStream, Stream encryptedDataHeaderStream)
+        private static async Task SaveNS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader)
         {
             throw new NotImplementedException();
         }

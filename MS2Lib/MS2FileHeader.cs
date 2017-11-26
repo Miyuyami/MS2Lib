@@ -22,13 +22,10 @@ namespace MS2Lib
             this.TypeId = typeId;
         }
 
-        public static MS2FileHeader Create(uint id, uint offset, uint typeId, MS2SizeHeader header)
+        internal static MS2FileHeader Create(uint id, uint offset, uint typeId, MS2SizeHeader header)
             => new MS2FileHeader(header.EncodedSize, header.CompressedSize, header.Size, id, offset, typeId);
 
-        public static MS2FileHeader Create(uint id, uint offset, uint typeId, uint encodedSize, uint compressedSize, uint size)
-            => new MS2FileHeader(encodedSize, compressedSize, size, id, offset, typeId);
-
-        public static async Task<MS2FileHeader> Load(MS2CryptoMode cryptoMode, Stream stream)
+        internal static async Task<MS2FileHeader> Load(MS2CryptoMode cryptoMode, Stream stream)
         {
             using (var br = new BinaryReader(stream, Encoding.ASCII, true))
             {
