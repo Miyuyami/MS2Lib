@@ -143,7 +143,7 @@ namespace MS2Lib.Decrypt
             => $"Files = {this.FileCount}, Name = {this.DataFile}, Mode = {this.DecryptionMode}";
 
         #region IDisposable interface
-        private bool IsDisposed = false; // To detect redundant calls
+        private bool IsDisposed = false;
 
         protected virtual void Dispose(bool disposing)
         {
