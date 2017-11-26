@@ -10,7 +10,7 @@ using DLogger = MiscUtils.Logging.DebugLogger;
 namespace MS2Lib
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public class MS2File
+    public class MS2File : IDisposable
     {
         private readonly bool IsDataEncrypted;
         private readonly MS2CryptoMode ArchiveCryptoMode;
@@ -164,5 +164,38 @@ namespace MS2Lib
 
         private string DebuggerDisplay
             => $"Name = {this.Name}";
+
+        #region IDisposable interface
+        private bool IsDisposed = false;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this.IsDisposed)
+            {
+                if (disposing)
+                {
+                    // managed
+                    this.DataMemoryMappedFile?.Dispose();
+                    this.DataStream?.Dispose();
+                }
+
+                // unmanaged
+
+                this.IsDisposed = true;
+            }
+        }
+
+        //~MS2Archive()
+        //{
+        //    this.Dispose(false);
+        //}
+
+        public void Dispose()
+        {
+            this.Dispose(true);
+
+            //GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

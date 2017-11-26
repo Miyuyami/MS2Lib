@@ -17,20 +17,18 @@ namespace MS2Lib
         public MemoryMappedFile DataFile { get; }
 
         public MS2CryptoMode CryptoMode { get; }
-        public uint FileCount { get; }
 
         public MS2SizeHeader Header { get; }
         public MS2SizeHeader Data { get; }
 
         public List<MS2File> Files { get; }
 
-        private MS2Archive(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader data, string name, MemoryMappedFile dataFile, List<MS2File> files)
+        private MS2Archive(MS2CryptoMode cryptoMode, MS2SizeHeader header, MS2SizeHeader data, string name, MemoryMappedFile dataFile, List<MS2File> files)
         {
             this.Name = name;
             this.DataFile = dataFile;
 
             this.CryptoMode = cryptoMode;
-            this.FileCount = fileCount;
 
             this.Header = header;
             this.Data = data;
@@ -99,7 +97,7 @@ namespace MS2Lib
                 Logger.Verbose($"There are {fileCount} files in the archive.");
                 List<MS2File> files = await LoadFiles(cryptoMode, header, data, fileCount, br, dataMemoryMappedFile).ConfigureAwait(false);
 
-                var archive = new MS2Archive(cryptoMode, fileCount, header, data, name, dataMemoryMappedFile, files);
+                var archive = new MS2Archive(cryptoMode, header, data, name, dataMemoryMappedFile, files);
 
                 return archive;
             });
@@ -121,7 +119,7 @@ namespace MS2Lib
                 var data = new MS2SizeHeader(dataEncodedSize, dataCompressedSize, dataSize);
                 List<MS2File> files = await LoadFiles(cryptoMode, header, data, fileCount, br, dataMemoryMappedFile).ConfigureAwait(false);
 
-                var archive = new MS2Archive(cryptoMode, fileCount, header, data, name, dataMemoryMappedFile, files);
+                var archive = new MS2Archive(cryptoMode, header, data, name, dataMemoryMappedFile, files);
 
                 return archive;
             });
@@ -281,7 +279,7 @@ namespace MS2Lib
         #endregion
 
         private string DebuggerDisplay
-            => $"Files = {this.FileCount}, Name = {this.DataFile}, Mode = {this.CryptoMode}";
+            => $"Files = {this.Files.Count}, Name = {this.DataFile}, Mode = {this.CryptoMode}";
 
         #region IDisposable interface
         private bool IsDisposed = false;
@@ -294,6 +292,11 @@ namespace MS2Lib
                 {
                     // managed
                     this.DataFile.Dispose();
+
+                    for (int i = 0; i < this.Files.Count; i++)
+                    {
+                        this.Files[i].Dispose();
+                    }
                 }
 
                 // unmanaged
