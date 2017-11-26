@@ -36,5 +36,21 @@ namespace MS2Lib
 
             return dst;
         }
+
+        public static byte[] Decompress(byte[] src, uint dstSize)
+        {
+            byte[] dst = new byte[dstSize];
+
+            if (Is64Bit)
+            {
+                NativeMethods.Decompress64(src, (UIntPtr)src.Length, dst, (UIntPtr)dst.Length);
+            }
+            else
+            {
+                NativeMethods.Decompress32(src, (UIntPtr)src.Length, dst, (UIntPtr)dst.Length);
+            }
+
+            return dst;
+        }
     }
 }
