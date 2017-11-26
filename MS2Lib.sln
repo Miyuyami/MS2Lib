@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MiscUtils", "..\..\..\..\Us
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteropDecryptUnitTest", "InteropDecryptUnitTest\InteropDecryptUnitTest.csproj", "{C1FFA414-4B2F-4D98-B916-4BAB5E2EB9A1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MS2LibUnitTest", "MS2LibUnitTest\MS2LibUnitTest.csproj", "{08DA0D6E-55A7-4704-A598-86667E69B7E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,18 @@ Global
 		{C1FFA414-4B2F-4D98-B916-4BAB5E2EB9A1}.Release|x64.Build.0 = Release|Any CPU
 		{C1FFA414-4B2F-4D98-B916-4BAB5E2EB9A1}.Release|x86.ActiveCfg = Release|Any CPU
 		{C1FFA414-4B2F-4D98-B916-4BAB5E2EB9A1}.Release|x86.Build.0 = Release|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Debug|x64.Build.0 = Debug|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Debug|x86.Build.0 = Debug|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Release|x64.ActiveCfg = Release|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Release|x64.Build.0 = Release|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Release|x86.ActiveCfg = Release|Any CPU
+		{08DA0D6E-55A7-4704-A598-86667E69B7E7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
