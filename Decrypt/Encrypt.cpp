@@ -6,27 +6,57 @@ using namespace CryptoPP;
 
 extern "C"
 {
-	__declspec(dllexport) void Encrypt(const byte src[], unsigned int srcSize, byte dst[], unsigned int dstSize, const byte key[], unsigned int keySize, const byte iv[])
+	__declspec(dllexport) size_t Encrypt(const byte src[], size_t srcSize, byte** dst, const byte key[], size_t keySize, const byte iv[])
 	{
+		std::string compressed;
+
 		ArraySource as(src, srcSize, true,
 			new ZlibCompressor(
 				new StreamTransformationFilter(CTR_Mode<AES>::Encryption(key, keySize, iv),
 					new Base64Encoder(
-						new ArraySink(dst, dstSize)
+						new StringSink(compressed), false
 					)
-				)
+				), 3U, 15U, false
 			)
 		);
+
+		*dst = new byte[compressed.size()];
+		memcpy(*dst, compressed.data(), compressed.size());
+
+		return compressed.size();
 	}
 
-	__declspec(dllexport) void EncryptNoCompress(const byte src[], unsigned int srcSize, byte dst[], unsigned int dstSize, const byte key[], unsigned int keySize, const byte iv[])
+	__declspec(dllexport) size_t EncryptNoCompress(const byte src[], size_t srcSize, byte** dst, const byte key[], size_t keySize, const byte iv[])
 	{
+		std::string encoded;
+
 		ArraySource as(src, srcSize, true,
 			new StreamTransformationFilter(CTR_Mode<AES>::Encryption(key, keySize, iv),
 				new Base64Encoder(
-					new ArraySink(dst, dstSize)
+					new StringSink(encoded), false
 				)
 			)
 		);
+
+		*dst = new byte[encoded.size()];
+		memcpy(*dst, encoded.data(), encoded.size());
+
+		return encoded.size();
+	}
+
+	__declspec(dllexport) size_t Compress(const byte src[], size_t srcSize, byte** dst)
+	{
+		std::string compressed;
+
+		ArraySource as(src, srcSize, true,
+			new ZlibCompressor(
+				new StringSink(compressed), 3U, 15U, false
+			)
+		);
+
+		*dst = new byte[compressed.size()];
+		memcpy(*dst, compressed.data(), compressed.size());
+
+		return compressed.size();
 	}
 }

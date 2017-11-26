@@ -1,4 +1,5 @@
-﻿using static MS2Lib.Helpers;
+﻿using System;
+using static MS2Lib.Helpers;
 
 namespace MS2Lib
 {
@@ -10,11 +11,11 @@ namespace MS2Lib
 
             if (Is64Bit)
             {
-                NativeMethods.Decrypt64(src, (uint)src.Length, dst, (uint)dst.Length, key, (uint)key.Length, iv);
+                NativeMethods.Decrypt64(src, (UIntPtr)src.Length, dst, (UIntPtr)dst.Length, key, (UIntPtr)key.Length, iv);
             }
             else
             {
-                NativeMethods.Decrypt32(src, (uint)src.Length, dst, (uint)dst.Length, key, (uint)key.Length, iv);
+                NativeMethods.Decrypt32(src, (UIntPtr)src.Length, dst, (UIntPtr)dst.Length, key, (UIntPtr)key.Length, iv);
             }
 
             return dst;
@@ -26,11 +27,11 @@ namespace MS2Lib
 
             if (Is64Bit)
             {
-                NativeMethods.DecryptNoDecompress64(src, (uint)src.Length, dst, (uint)dst.Length, key, (uint)key.Length, iv);
+                NativeMethods.DecryptNoDecompress64(src, (UIntPtr)src.Length, dst, (UIntPtr)dst.Length, key, (UIntPtr)key.Length, iv);
             }
             else
             {
-                NativeMethods.DecryptNoDecompress32(src, (uint)src.Length, dst, (uint)dst.Length, key, (uint)key.Length, iv);
+                NativeMethods.DecryptNoDecompress32(src, (UIntPtr)src.Length, dst, (UIntPtr)dst.Length, key, (UIntPtr)key.Length, iv);
             }
 
             return dst;
