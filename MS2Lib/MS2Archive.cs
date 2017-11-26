@@ -233,7 +233,7 @@ namespace MS2Lib
 
         private static Task SaveMS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader)
         {
-            return Task.Run(async () =>
+            return Task.Run(() =>
             {
                 // decryption mode
                 bwHeader.Write((uint)cryptoMode);
@@ -256,9 +256,27 @@ namespace MS2Lib
             });
         }
 
-        private static async Task SaveNS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader)
+        private static Task SaveNS2F(MS2CryptoMode cryptoMode, uint fileCount, MS2SizeHeader header, MS2SizeHeader dataHeader, BinaryWriter bwHeader)
         {
-            throw new NotImplementedException();
+            return Task.Run(() =>
+            {
+                // decryption mode
+                bwHeader.Write((uint)cryptoMode);
+                // fileCount
+                bwHeader.Write(fileCount);
+                // dataCompressedSize
+                bwHeader.Write(dataHeader.CompressedSize); bwHeader.Write(0u);
+                // dataEncodedSize
+                bwHeader.Write(dataHeader.EncodedSize); bwHeader.Write(0u);
+                // size
+                bwHeader.Write(header.Size); bwHeader.Write(0u);
+                // compressedSize
+                bwHeader.Write(header.CompressedSize); bwHeader.Write(0u);
+                // encodedSize
+                bwHeader.Write(header.EncodedSize); bwHeader.Write(0u);
+                // dataSize
+                bwHeader.Write(dataHeader.Size); bwHeader.Write(0u);
+            });
         }
         #endregion
 
