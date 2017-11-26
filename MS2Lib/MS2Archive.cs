@@ -158,8 +158,8 @@ namespace MS2Lib
         #region static saving
         public static async Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, string headerFilePath, string dataFilePath)
         {
-            using (Stream headerStream = File.OpenWrite(headerFilePath))
-            using (Stream dataStream = File.OpenWrite(dataFilePath))
+            using (Stream headerStream = File.Open(headerFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            using (Stream dataStream = File.Open(dataFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
             {
                 await Save(cryptoMode, files, headerStream, dataStream);
             }

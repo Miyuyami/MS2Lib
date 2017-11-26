@@ -84,10 +84,7 @@ namespace MS2Lib
             });
         }
 
-        public Task Save(MS2CryptoMode cryptoMode, string filePath)
-            => this.Save(cryptoMode, File.OpenWrite(filePath));
-
-        public async Task Save(MS2CryptoMode cryptoMode, Stream stream)
+        internal async Task Save(MS2CryptoMode cryptoMode, Stream stream)
         {
             using (var bw = new BinaryWriter(stream, Encoding.ASCII, true))
             {

@@ -5,7 +5,6 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using MiscUtils.IO;
-using DLogger = MiscUtils.Logging.DebugLogger;
 
 namespace MS2Lib
 {
@@ -16,7 +15,7 @@ namespace MS2Lib
         public ReadOnlyCollection<string> Properties { get; }
 
         public string Id => this.GetOrDefault(0);
-        public string TypeId => this.Properties.Count == 3 ? this.GetOrDefault(1) : Default;
+        public string FolderId => this.Properties.Count == 3 ? this.GetOrDefault(1) : Default;
         public string Name => this.Properties.Count == 2 ? this.GetOrDefault(1) : this.GetOrDefault(2);
 
         private MS2FileInfoHeader(ReadOnlyCollection<string> properties)
@@ -28,7 +27,14 @@ namespace MS2Lib
         {
             string[] properties = new string[other.Properties.Count];
             other.Properties.CopyTo(properties, 0);
-            properties[0] = id;
+            if (properties.Length > 1)
+            {
+                properties[0] = id;
+            }
+            else
+            {
+
+            }
 
             return new MS2FileInfoHeader(Array.AsReadOnly(properties));
         }
@@ -41,18 +47,19 @@ namespace MS2Lib
                 string[] properties = line?.Split(',') ?? new string[0];
                 ReadOnlyCollection<string> propertiesCollection = Array.AsReadOnly(properties);
 
-                DLogger.Write(line);
                 var result = new MS2FileInfoHeader(propertiesCollection);
 
                 return result;
             }
         }
 
-        internal Task Save(string filePath)
-            => this.Save(File.OpenWrite(filePath));
-
         internal async Task Save(Stream stream)
         {
+            if (this.Properties.Count == 0)
+            {
+                return;
+            }
+
             using (var sw = new UnbufferedStreamWriter(stream, Encoding.ASCII, true))
             {
                 string line = String.Join(",", this.Properties);

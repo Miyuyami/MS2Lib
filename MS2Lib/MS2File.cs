@@ -85,10 +85,7 @@ namespace MS2Lib
             MS2FileInfoHeader fileInfoHeader = await MS2FileInfoHeader.Load(headerStream).ConfigureAwait(false);
             MS2FileHeader fileHeader = await MS2FileHeader.Load(cryptoMode, dataStream).ConfigureAwait(false);
 
-            Debug.Assert(UInt32.Parse(fileInfoHeader.Id) == fileHeader.Id);
-            Debug.Assert(UInt32.Parse(fileInfoHeader.TypeId) == fileHeader.TypeId);
-
-            DLogger.Write($"Id={fileInfoHeader.Id}-{fileHeader.Id}, Type={fileInfoHeader.TypeId}-{fileHeader.TypeId}, Name={fileInfoHeader.Name}, Size={FileEx.FormatStorage(fileHeader.EncodedSize)}->{FileEx.FormatStorage(fileHeader.CompressedSize)}->{FileEx.FormatStorage(fileHeader.Size)}");
+            DLogger.Write($"Id={fileInfoHeader.Id}-{fileHeader.Id}, Type={fileInfoHeader.FolderId}-{fileHeader.TypeId}, Name={fileInfoHeader.Name}, Size={FileEx.FormatStorage(fileHeader.EncodedSize)}->{FileEx.FormatStorage(fileHeader.CompressedSize)}->{FileEx.FormatStorage(fileHeader.Size)}");
 
             var file = new MS2File(fileInfoHeader, fileHeader, cryptoMode, dataMemoryMappedFile);
 
@@ -106,7 +103,13 @@ namespace MS2Lib
 
             if (this.DataMemoryMappedFile != null)
             {
-                Stream stream = this.DataMemoryMappedFile.CreateViewStream(this.Header.Offset, this.Header.EncodedSize, MemoryMappedFileAccess.Read);
+                uint size = this.IsDataEncrypted ? this.Header.EncodedSize : this.Header.Size;
+                if (size == 0)
+                {
+                    return (new MemoryStream(0), true);
+                }
+
+                Stream stream = this.DataMemoryMappedFile.CreateViewStream(this.Header.Offset, size, MemoryMappedFileAccess.Read);
 
                 return (stream, true);
             }
