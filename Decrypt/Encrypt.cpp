@@ -8,22 +8,22 @@ extern "C"
 {
 	__declspec(dllexport) size_t Encrypt(const byte src[], size_t srcSize, byte** dst, const byte key[], size_t keySize, const byte iv[])
 	{
-		std::string compressed;
+		std::string encoded;
 
 		ArraySource as(src, srcSize, true,
 			new ZlibCompressor(
 				new StreamTransformationFilter(CTR_Mode<AES>::Encryption(key, keySize, iv),
 					new Base64Encoder(
-						new StringSink(compressed), false
+						new StringSink(encoded), false
 					)
-				), 3U, 15U, false
+				), ZlibCompressor::MAX_DEFLATE_LEVEL, ZlibCompressor::MAX_LOG2_WINDOW_SIZE, false
 			)
 		);
 
-		*dst = new byte[compressed.size()];
-		memcpy(*dst, compressed.data(), compressed.size());
+		*dst = new byte[encoded.size()];
+		memcpy(*dst, encoded.data(), encoded.size());
 
-		return compressed.size();
+		return encoded.size();
 	}
 
 	__declspec(dllexport) size_t EncryptNoCompress(const byte src[], size_t srcSize, byte** dst, const byte key[], size_t keySize, const byte iv[])
@@ -50,7 +50,7 @@ extern "C"
 
 		ArraySource as(src, srcSize, true,
 			new ZlibCompressor(
-				new StringSink(compressed), 3U, 15U, false
+				new StringSink(compressed), ZlibCompressor::MAX_DEFLATE_LEVEL, ZlibCompressor::MAX_LOG2_WINDOW_SIZE, false
 			)
 		);
 
