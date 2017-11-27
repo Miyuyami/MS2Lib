@@ -13,17 +13,17 @@ namespace MS2Lib
     {
         public uint Id { get; }
         public uint Offset { get; }
-        public uint TypeId { get; }
+        public CompressionType CompressionType { get; }
 
-        private MS2FileHeader(uint encodedSize, uint compressedSize, uint size, uint id, uint offset, uint typeId) : base(encodedSize, compressedSize, size)
+        private MS2FileHeader(uint encodedSize, uint compressedSize, uint size, uint id, uint offset, CompressionType compressionType) : base(encodedSize, compressedSize, size)
         {
             this.Id = id;
             this.Offset = offset;
-            this.TypeId = typeId;
+            this.CompressionType = compressionType;
         }
 
-        internal static MS2FileHeader Create(uint id, uint offset, uint typeId, MS2SizeHeader header)
-            => new MS2FileHeader(header.EncodedSize, header.CompressedSize, header.Size, id, offset, typeId);
+        internal static MS2FileHeader Create(uint id, uint offset, CompressionType compressionType, MS2SizeHeader header)
+            => new MS2FileHeader(header.EncodedSize, header.CompressedSize, header.Size, id, offset, compressionType);
 
         internal static async Task<MS2FileHeader> Load(MS2CryptoMode cryptoMode, Stream stream)
         {
@@ -49,7 +49,7 @@ namespace MS2Lib
             {
                 uint unk = br.ReadUInt32(); // TODO: unknown/unused?
                 uint fileId = br.ReadUInt32();
-                uint fileType = br.ReadUInt32();
+                var compressionType = (CompressionType)br.ReadUInt32();
                 uint unk2 = br.ReadUInt32(); // TODO: unknown/unused?
                 uint offset = br.ReadUInt32() | br.ReadUInt32();
                 uint encodedSize = br.ReadUInt32() | br.ReadUInt32();
@@ -65,7 +65,7 @@ namespace MS2Lib
                     Logger.Debug($"File Header second unk is \"{unk2}\".");
                 }
 
-                return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, fileType);
+                return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, compressionType);
             });
         }
 
@@ -73,14 +73,14 @@ namespace MS2Lib
         {
             return Task.Run(() =>
             {
-                uint fileType = br.ReadUInt32();
+                var compressionType = (CompressionType)br.ReadUInt32();
                 uint fileId = br.ReadUInt32();
                 uint encodedSize = br.ReadUInt32();
                 uint compressedSize = br.ReadUInt32() | br.ReadUInt32();
                 uint size = br.ReadUInt32() | br.ReadUInt32();
                 uint offset = br.ReadUInt32() | br.ReadUInt32();
 
-                return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, fileType);
+                return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, compressionType);
             });
         }
 
@@ -112,8 +112,8 @@ namespace MS2Lib
                 bw.Write(0u);
                 // fileId
                 bw.Write(this.Id);
-                // fileType
-                bw.Write(this.TypeId);
+                // compressionId
+                bw.Write((uint)this.CompressionType);
                 // unk2
                 bw.Write(0u);
                 // offset
@@ -131,8 +131,8 @@ namespace MS2Lib
         {
             return Task.Run(() =>
             {
-                // fileType
-                bw.Write(this.TypeId);
+                // compressionId
+                bw.Write((uint)this.CompressionType);
                 // fileId
                 bw.Write(this.Id);
                 // encodedSize
@@ -161,7 +161,7 @@ namespace MS2Lib
                    base.Equals(other) &&
                    this.Id == other.Id &&
                    this.Offset == other.Offset &&
-                   this.TypeId == other.TypeId;
+                   this.CompressionType == other.CompressionType;
         }
 
         public override int GetHashCode()
@@ -172,7 +172,7 @@ namespace MS2Lib
                 hashCode *= -1521134295 + base.GetHashCode();
                 hashCode *= -1521134295 + this.Id.GetHashCode();
                 hashCode *= -1521134295 + this.Offset.GetHashCode();
-                hashCode *= -1521134295 + this.TypeId.GetHashCode();
+                hashCode *= -1521134295 + this.CompressionType.GetHashCode();
                 return hashCode;
             }
         }

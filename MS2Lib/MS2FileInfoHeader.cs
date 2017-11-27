@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MiscUtils.IO;
@@ -11,32 +12,70 @@ namespace MS2Lib
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class MS2FileInfoHeader
     {
+        private const int NumberOfProperties = 3;
         private const string Default = "";
-        public ReadOnlyCollection<string> Properties { get; }
+        private List<string> Properties { get; }
 
-        public string Id => this.GetOrDefault(0);
-        public string FolderId => this.Properties.Count == 3 ? this.GetOrDefault(1) : Default;
-        public string Name => this.Properties.Count == 2 ? this.GetOrDefault(1) : this.GetOrDefault(2);
-
-        private MS2FileInfoHeader(ReadOnlyCollection<string> properties)
+        public string Id
         {
+            get => this.Properties[0];
+            set => this.Properties[0] = value;
+        }
+
+        public string RootFolderId => BuildRootFolderId(this.Name);
+
+        public string Name
+        {
+            get => this.Properties[2];
+            set => this.Properties[2] = value;
+        }
+
+        private MS2FileInfoHeader(List<string> properties)
+        {
+            Debug.Assert(properties.Count == NumberOfProperties);
+
             this.Properties = properties;
         }
 
         internal static MS2FileInfoHeader Create(string id, MS2FileInfoHeader other)
+            => Create(id, other.Name);
+
+        internal static MS2FileInfoHeader Create(string id, string name)
+            => new MS2FileInfoHeader(new List<string>() { id, BuildRootFolderId(name), name });
+
+        private static string BuildRootFolderId(string fileName)
         {
-            string[] properties = new string[other.Properties.Count];
-            other.Properties.CopyTo(properties, 0);
-            if (properties.Length > 1)
+            string rootDirectory = PathEx.GetRootDirectory(fileName);
+            if (String.IsNullOrWhiteSpace(rootDirectory))
             {
-                properties[0] = id;
-            }
-            else
-            {
-
+                return String.Empty;
             }
 
-            return new MS2FileInfoHeader(Array.AsReadOnly(properties));
+            var sb = new StringBuilder(rootDirectory.Length * 2);
+
+            for (int i = 0; i < rootDirectory.Length; i++)
+            {
+                char c = rootDirectory[i];
+                if (c == '_')
+                {
+                    sb.Append(c);
+                    continue;
+                }
+
+                if (c >= '0' && c <= '9' ||
+                    c >= 'A' && c <= 'Z' ||
+                    c >= 'a' && c <= 'z')
+                {
+                    // valid
+                    sb.Append((byte)(c - '0'));
+                }
+                else
+                {
+                    throw new Exception($"Unrecognised character in root directory [{c}].");
+                }
+            }
+
+            return sb.ToString();
         }
 
         internal static async Task<MS2FileInfoHeader> Load(Stream stream)
@@ -44,12 +83,25 @@ namespace MS2Lib
             using (var usr = new UnbufferedStreamReader(stream, true))
             {
                 string line = await usr.ReadLineAsync().ConfigureAwait(false);
-                string[] properties = line?.Split(',') ?? new string[0];
-                ReadOnlyCollection<string> propertiesCollection = Array.AsReadOnly(properties);
 
-                var result = new MS2FileInfoHeader(propertiesCollection);
+                if (String.IsNullOrWhiteSpace(line))
+                {
+                    return new MS2FileInfoHeader(new List<string>(Enumerable.Repeat(String.Empty, NumberOfProperties)));
+                }
 
-                return result;
+                string[] properties = line.Split(',');
+                if (properties.Length == 3)
+                {
+                    return new MS2FileInfoHeader(properties.ToList());
+                }
+                else if (properties.Length == 2)
+                {
+                    return new MS2FileInfoHeader(new List<string>() { properties[0], String.Empty, properties[1] });
+                }
+                else
+                {
+                    throw new Exception($"Unrecognised number of properties [{properties.Length}].");
+                }
             }
         }
 
@@ -62,7 +114,7 @@ namespace MS2Lib
 
             using (var sw = new UnbufferedStreamWriter(stream, Encoding.ASCII, true))
             {
-                string line = String.Join(",", this.Properties);
+                string line = String.Join(",", this.Properties.Where(s => !String.IsNullOrEmpty(s)));
 
                 await sw.WriteLineAsync(line);
             }
@@ -76,6 +128,11 @@ namespace MS2Lib
             }
 
             return Default;
+        }
+
+        private void SetOrDefault(int index, string value)
+        {
+
         }
 
         private string DebuggerDisplay

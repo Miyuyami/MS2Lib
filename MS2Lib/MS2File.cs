@@ -19,19 +19,21 @@ namespace MS2Lib
 
         public string Id => this.InfoHeader.Id;
         public string Name => this.InfoHeader.Name;
-        public uint TypeId { get; }
-        public bool IsCompressed
+        public CompressionType CompressionType { get; }
+        public bool IsZlibCompressed
         {
             get
             {
-                switch (this.TypeId)
+                switch (this.CompressionType)
                 {
-                    case 4278190080u:
+                    case CompressionType.Usm:
                         return false;
-                    case 3992977408u:
+                    case CompressionType.Png:
                         return false;
-                    default:
+                    case CompressionType.Zlib:
                         return true;
+                    default:
+                        throw new Exception($"Unrecognised compression type [{this.CompressionType}].");
                 }
             }
         }
@@ -44,7 +46,7 @@ namespace MS2Lib
             this.Header = header ?? throw new ArgumentNullException(nameof(header));
             this.ArchiveCryptoMode = archiveCryptoMode;
             this.DataMemoryMappedFile = dataFile ?? throw new ArgumentNullException(nameof(dataFile));
-            this.TypeId = this.Header.TypeId;
+            this.CompressionType = this.Header.CompressionType;
             this.IsDataEncrypted = true;
         }
 
@@ -59,11 +61,11 @@ namespace MS2Lib
             this.Header = header ?? throw new ArgumentNullException(nameof(header));
             this.ArchiveCryptoMode = archiveCryptoMode;
             this.DataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
-            this.TypeId = this.Header.TypeId;
+            this.CompressionType = this.Header.CompressionType;
             this.IsDataEncrypted = true;
         }
 
-        private MS2File(MS2FileInfoHeader infoHeader, uint typeId, MS2CryptoMode archiveCryptoMode, Stream dataStream)
+        private MS2File(MS2FileInfoHeader infoHeader, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, Stream dataStream)
         {
             if (!dataStream.CanSeek)
             {
@@ -73,19 +75,19 @@ namespace MS2Lib
             this.InfoHeader = infoHeader ?? throw new ArgumentNullException(nameof(infoHeader));
             this.ArchiveCryptoMode = archiveCryptoMode;
             this.DataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
-            this.TypeId = typeId;
+            this.CompressionType = compressionType;
             this.IsDataEncrypted = false;
         }
 
-        public static MS2File Create(MS2FileInfoHeader infoHeader, uint typeId, MS2CryptoMode archiveCryptoMode, Stream dataStream)
-            => new MS2File(infoHeader, typeId, archiveCryptoMode, dataStream);
+        public static MS2File Create(uint id, string pathInArchive, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, Stream dataStream)
+            => new MS2File(MS2FileInfoHeader.Create(id.ToString(), pathInArchive), compressionType, archiveCryptoMode, dataStream);
 
         internal static async Task<MS2File> Load(MS2CryptoMode cryptoMode, Stream headerStream, Stream dataStream, MemoryMappedFile dataMemoryMappedFile)
         {
             MS2FileInfoHeader fileInfoHeader = await MS2FileInfoHeader.Load(headerStream).ConfigureAwait(false);
             MS2FileHeader fileHeader = await MS2FileHeader.Load(cryptoMode, dataStream).ConfigureAwait(false);
 
-            DLogger.Write($"Id={fileInfoHeader.Id}-{fileHeader.Id}, Type={fileInfoHeader.FolderId}-{fileHeader.TypeId}, Name={fileInfoHeader.Name}, Size={FileEx.FormatStorage(fileHeader.EncodedSize)}->{FileEx.FormatStorage(fileHeader.CompressedSize)}->{FileEx.FormatStorage(fileHeader.Size)}");
+            DLogger.Write($"Id={fileInfoHeader.Id}-{fileHeader.Id}, CompressionId={fileHeader.CompressionType}, RootFolder={fileInfoHeader.RootFolderId}, Name={fileInfoHeader.Name}, Size={FileEx.FormatStorage(fileHeader.EncodedSize)}->{FileEx.FormatStorage(fileHeader.CompressedSize)}->{FileEx.FormatStorage(fileHeader.Size)}");
 
             var file = new MS2File(fileInfoHeader, fileHeader, cryptoMode, dataMemoryMappedFile);
 
@@ -128,7 +130,7 @@ namespace MS2Lib
             Debug.Assert(this.Header != null);
             try
             {
-                Stream stream = await DecryptStreamToStreamAsync(this.ArchiveCryptoMode, this.Header, this.IsCompressed, dataStream.Stream).ConfigureAwait(false);
+                Stream stream = await DecryptStreamToStreamAsync(this.ArchiveCryptoMode, this.Header, this.IsZlibCompressed, dataStream.Stream).ConfigureAwait(false);
 
                 return (stream, true);
             }
@@ -152,7 +154,7 @@ namespace MS2Lib
             Debug.Assert(this.Header == null);
             try
             {
-                (Stream stream, MS2SizeHeader header) = await EncryptStreamToStreamAsync(this.ArchiveCryptoMode, this.IsCompressed, dataStream, this.Header.Size).ConfigureAwait(false);
+                (Stream stream, MS2SizeHeader header) = await EncryptStreamToStreamAsync(this.ArchiveCryptoMode, this.IsZlibCompressed, dataStream, this.Header.Size).ConfigureAwait(false);
 
                 return (stream, true, header);
             }
