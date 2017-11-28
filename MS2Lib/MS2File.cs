@@ -79,6 +79,9 @@ namespace MS2Lib
             this.IsDataEncrypted = false;
         }
 
+        public static MS2File Create(uint id, string pathInArchive, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, string dataFilePath)
+            => Create(id, pathInArchive, compressionType, archiveCryptoMode, File.OpenRead(dataFilePath));
+
         public static MS2File Create(uint id, string pathInArchive, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, Stream dataStream)
             => new MS2File(MS2FileInfoHeader.Create(id.ToString(), pathInArchive), compressionType, archiveCryptoMode, dataStream);
 
@@ -143,7 +146,7 @@ namespace MS2Lib
             }
         }
 
-        public async Task<(Stream Stream, bool ShouldDispose, MS2SizeHeader header)> GetEncryptedStreamAsync()
+        public async Task<(Stream Stream, bool ShouldDispose, MS2SizeHeader Header)> GetEncryptedStreamAsync()
         {
             (Stream dataStream, bool shouldDispose) = this.GetDataStream();
             if (this.IsDataEncrypted)
@@ -154,7 +157,7 @@ namespace MS2Lib
             Debug.Assert(this.Header == null);
             try
             {
-                (Stream stream, MS2SizeHeader header) = await EncryptStreamToStreamAsync(this.ArchiveCryptoMode, this.IsZlibCompressed, dataStream, this.Header.Size).ConfigureAwait(false);
+                (Stream stream, MS2SizeHeader header) = await EncryptStreamToStreamAsync(this.ArchiveCryptoMode, this.IsZlibCompressed, dataStream, (uint)dataStream.Length).ConfigureAwait(false);
 
                 return (stream, true, header);
             }
