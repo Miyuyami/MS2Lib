@@ -42,7 +42,7 @@ namespace MS2Lib
             using (Stream headerStream = File.OpenRead(headerFilePath))
             using (FileStream dataStream = File.OpenRead(dataFilePath))
             {
-                return await Load(headerStream, dataStream);
+                return await Load(headerStream, dataStream).ConfigureAwait(false);
             }
         }
 
@@ -144,16 +144,116 @@ namespace MS2Lib
         #endregion
 
         #region saving archive
-        public static async Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, string headerFilePath, string dataFilePath)
+        public static async Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, string headerFilePath, string dataFilePath, bool runAsync = true)
         {
             using (Stream headerStream = File.Open(headerFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
             using (Stream dataStream = File.Open(dataFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
             {
-                await Save(cryptoMode, files, headerStream, dataStream);
+                await Save(cryptoMode, files, headerStream, dataStream, runAsync).ConfigureAwait(false);
             }
         }
 
-        public static async Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream)
+        public static Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream, bool runAsync = true)
+        {
+            if (runAsync)
+            {
+                return SaveAsync(cryptoMode, files, headerStream, dataStream);
+            }
+            else
+            {
+                return SaveSync(cryptoMode, files, headerStream, dataStream);
+            }
+        }
+
+        private static async Task SaveAsync(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream)
+        {
+            MS2SizeHeader header;
+            MS2SizeHeader dataHeader;
+            Stream encryptedHeaderStream;
+            Stream encryptedDataHeaderStream;
+
+            using (var fileInfoHeaderStream = new MemoryStream())
+            using (var fileHeaderStream = new MemoryStream())
+            {
+                uint offset = 0;
+                MemoryStream[] memoryStreams = new MemoryStream[files.Count];
+                Task[] tasks = new Task[files.Count];
+
+                for (int i = 0; i < files.Count; i++)
+                {
+                    uint id = (uint)i + 1u;
+                    CompressionType compressionType = files[i].CompressionType;
+
+                    tasks[i] = Task.Run(async () =>
+                    {
+                        (Stream Stream, bool ShouldDispose, MS2SizeHeader Header) data = await files[i].GetEncryptedStreamAsync().ConfigureAwait(false);
+                        try
+                        {
+                            var fileInfoHeader = MS2FileInfoHeader.Create(id.ToString(), files[i].InfoHeader);
+                            var fileHeader = MS2FileHeader.Create(id, offset, compressionType, data.Header);
+
+                            await fileInfoHeader.Save(fileInfoHeaderStream).ConfigureAwait(false);
+                            await fileHeader.Save(cryptoMode, fileHeaderStream).ConfigureAwait(false);
+
+                            memoryStreams[i] = new MemoryStream((int)data.Header.EncodedSize);
+                            await data.Stream.CopyToAsync(memoryStreams[i]).ConfigureAwait(false);
+
+                            offset += data.Header.EncodedSize;
+                        }
+                        finally
+                        {
+                            if (data.ShouldDispose)
+                            {
+                                data.Stream.Dispose();
+                            }
+                        }
+                    });
+                }
+
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+
+                for (int i = 0; i < memoryStreams.Length; i++)
+                {
+                    using (MemoryStream ms = memoryStreams[i])
+                    {
+                        ms.Position = 0;
+                        await ms.CopyToAsync(dataStream).ConfigureAwait(false);
+                    }
+                }
+
+                fileInfoHeaderStream.Position = 0;
+                fileHeaderStream.Position = 0;
+                // TODO: are those always compressed?
+                (encryptedHeaderStream, header) = await EncryptStreamToStreamAsync(cryptoMode, true, fileInfoHeaderStream, (uint)fileInfoHeaderStream.Length).ConfigureAwait(false);
+                (encryptedDataHeaderStream, dataHeader) = await EncryptStreamToStreamAsync(cryptoMode, true, fileHeaderStream, (uint)fileHeaderStream.Length).ConfigureAwait(false);
+
+                using (var bwHeader = new BinaryWriter(headerStream, Encoding.ASCII, true))
+                {
+                    switch (cryptoMode)
+                    {
+                        case MS2CryptoMode.MS2F:
+                            await SaveMS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                            break;
+                        case MS2CryptoMode.NS2F:
+                            await SaveNS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                            break;
+                        default:
+                        case MS2CryptoMode.OS2F:
+                        case MS2CryptoMode.PS2F:
+                            throw new NotImplementedException();
+                    }
+                }
+
+                using (encryptedHeaderStream)
+                using (encryptedDataHeaderStream)
+                {
+                    await encryptedHeaderStream.CopyToAsync(headerStream).ConfigureAwait(false);
+                    await encryptedDataHeaderStream.CopyToAsync(headerStream).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private static async Task SaveSync(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream)
         {
             MS2SizeHeader header;
             MS2SizeHeader dataHeader;
@@ -223,24 +323,24 @@ namespace MS2Lib
         {
             return Task.Run(() =>
             {
-                // decryption mode
-                bwHeader.Write((uint)cryptoMode);
-                // unk
-                bwHeader.Write(0u);
-                // dataCompressedSize
-                bwHeader.Write(dataHeader.CompressedSize); bwHeader.Write(0u);
-                // dataEncodedSize
-                bwHeader.Write(dataHeader.EncodedSize); bwHeader.Write(0u);
-                // size
-                bwHeader.Write(header.Size); bwHeader.Write(0u);
-                // compressedSize
-                bwHeader.Write(header.CompressedSize); bwHeader.Write(0u);
-                // encodedSize
-                bwHeader.Write(header.EncodedSize); bwHeader.Write(0u);
-                // fileCount
-                bwHeader.Write(fileCount); bwHeader.Write(0u);
-                // dataSize
-                bwHeader.Write(dataHeader.Size); bwHeader.Write(0u);
+                    // decryption mode
+                    bwHeader.Write((uint)cryptoMode);
+                    // unk
+                    bwHeader.Write(0u);
+                    // dataCompressedSize
+                    bwHeader.Write(dataHeader.CompressedSize); bwHeader.Write(0u);
+                    // dataEncodedSize
+                    bwHeader.Write(dataHeader.EncodedSize); bwHeader.Write(0u);
+                    // size
+                    bwHeader.Write(header.Size); bwHeader.Write(0u);
+                    // compressedSize
+                    bwHeader.Write(header.CompressedSize); bwHeader.Write(0u);
+                    // encodedSize
+                    bwHeader.Write(header.EncodedSize); bwHeader.Write(0u);
+                    // fileCount
+                    bwHeader.Write(fileCount); bwHeader.Write(0u);
+                    // dataSize
+                    bwHeader.Write(dataHeader.Size); bwHeader.Write(0u);
             });
         }
 
@@ -248,37 +348,37 @@ namespace MS2Lib
         {
             return Task.Run(() =>
             {
-                // decryption mode
-                bwHeader.Write((uint)cryptoMode);
-                // fileCount
-                bwHeader.Write(fileCount);
-                // dataCompressedSize
-                bwHeader.Write(dataHeader.CompressedSize); bwHeader.Write(0u);
-                // dataEncodedSize
-                bwHeader.Write(dataHeader.EncodedSize); bwHeader.Write(0u);
-                // size
-                bwHeader.Write(header.Size); bwHeader.Write(0u);
-                // compressedSize
-                bwHeader.Write(header.CompressedSize); bwHeader.Write(0u);
-                // encodedSize
-                bwHeader.Write(header.EncodedSize); bwHeader.Write(0u);
-                // dataSize
-                bwHeader.Write(dataHeader.Size); bwHeader.Write(0u);
+                    // decryption mode
+                    bwHeader.Write((uint)cryptoMode);
+                    // fileCount
+                    bwHeader.Write(fileCount);
+                    // dataCompressedSize
+                    bwHeader.Write(dataHeader.CompressedSize); bwHeader.Write(0u);
+                    // dataEncodedSize
+                    bwHeader.Write(dataHeader.EncodedSize); bwHeader.Write(0u);
+                    // size
+                    bwHeader.Write(header.Size); bwHeader.Write(0u);
+                    // compressedSize
+                    bwHeader.Write(header.CompressedSize); bwHeader.Write(0u);
+                    // encodedSize
+                    bwHeader.Write(header.EncodedSize); bwHeader.Write(0u);
+                    // dataSize
+                    bwHeader.Write(dataHeader.Size); bwHeader.Write(0u);
             });
         }
         #endregion
 
-        public Task Save(string headerFilePath, string dataFilePath)
-            => Save(this.CryptoMode, this.Files, headerFilePath, dataFilePath);
+        public Task Save(string headerFilePath, string dataFilePath, bool runAsync = true)
+            => Save(this.CryptoMode, this.Files, headerFilePath, dataFilePath, runAsync);
 
-        public Task Save(MS2CryptoMode newCryptoMode, string headerFilePath, string dataFilePath)
-            => Save(newCryptoMode, this.Files, headerFilePath, dataFilePath);
+        public Task Save(MS2CryptoMode newCryptoMode, string headerFilePath, string dataFilePath, bool runAsync = true)
+            => Save(newCryptoMode, this.Files, headerFilePath, dataFilePath, runAsync);
 
-        public Task Save(Stream headerStream, Stream dataStream)
-            => Save(this.CryptoMode, this.Files, headerStream, dataStream);
+        public Task Save(Stream headerStream, Stream dataStream, bool runAsync = true)
+            => Save(this.CryptoMode, this.Files, headerStream, dataStream, runAsync);
 
-        public Task Save(MS2CryptoMode newCryptoMode, Stream headerStream, Stream dataStream)
-            => Save(newCryptoMode, this.Files, headerStream, dataStream);
+        public Task Save(MS2CryptoMode newCryptoMode, Stream headerStream, Stream dataStream, bool runAsync = true)
+            => Save(newCryptoMode, this.Files, headerStream, dataStream, runAsync);
 
         private string DebuggerDisplay
             => $"Files = {this.Files.Count}, Name = {this.DataFile}, Mode = {this.CryptoMode}";

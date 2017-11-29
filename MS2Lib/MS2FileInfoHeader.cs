@@ -116,7 +116,7 @@ namespace MS2Lib
             {
                 string line = String.Join(",", this.Properties.Where(s => !String.IsNullOrEmpty(s)));
 
-                await sw.WriteLineAsync(line);
+                await sw.WriteLineAsync(line).ConfigureAwait(false);
             }
         }
 
