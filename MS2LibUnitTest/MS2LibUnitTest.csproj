@@ -93,6 +93,7 @@
     <Compile Include="ArchiveCreateFromExtractedUnitTests.cs" />
     <Compile Include="ArchiveCreateNewUnitTests.cs" />
     <Compile Include="ArchiveLoadSaveUnitTests.cs" />
+    <Compile Include="ArchiveModifyingUnitTests.cs" />
     <Compile Include="CryptoHelperUnitTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
