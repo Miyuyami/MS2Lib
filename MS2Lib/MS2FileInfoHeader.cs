@@ -41,7 +41,7 @@ namespace MS2Lib
             => Create(id, other.Name);
 
         internal static MS2FileInfoHeader Create(string id, string name)
-            => new MS2FileInfoHeader(new List<string>() { id, BuildRootFolderId(name), name });
+            => new MS2FileInfoHeader(new List<string>() { id, BuildRootFolderId(name), name.Replace('\\', '/') });
 
         private static string BuildRootFolderId(string fileName)
         {

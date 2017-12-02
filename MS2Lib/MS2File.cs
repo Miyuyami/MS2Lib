@@ -37,8 +37,8 @@ namespace MS2Lib
                 }
             }
         }
-        public MS2FileInfoHeader InfoHeader { get; }
-        public MS2FileHeader Header { get; }
+        public MS2FileInfoHeader InfoHeader { get; internal set; }
+        public MS2FileHeader Header { get; internal set; }
 
         private MS2File(MS2FileInfoHeader infoHeader, MS2FileHeader header, MS2CryptoMode archiveCryptoMode, MemoryMappedFile dataFile)
         {
