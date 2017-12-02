@@ -26,25 +26,25 @@ namespace MS2LibUnitTest
         {
             var expectedHeader = new MS2SizeHeader((uint)this.EncryptedBytes.Length, 21u, 13u);
             {
-                (byte[] bytes, MS2SizeHeader header) = await CryptoHelper.EncryptDataToDataAsync(MS2CryptoMode.MS2F, true, this.DecryptedBytes);
+                (byte[] bytes, MS2SizeHeader header) = await CryptoHelper.EncryptDataToDataAsync(MS2CryptoMode.MS2F, true, this.DecryptedBytes).ConfigureAwait(false);
 
                 Assert.AreEqual(header, expectedHeader);
                 CollectionAssert.AreEqual(this.EncryptedBytes, bytes);
             }
 
             {
-                (byte[] bytes, MS2SizeHeader header) = await CryptoHelper.EncryptStreamToDataAsync(MS2CryptoMode.MS2F, true, new MemoryStream(this.DecryptedBytes), (uint)this.DecryptedBytes.Length);
+                (byte[] bytes, MS2SizeHeader header) = await CryptoHelper.EncryptStreamToDataAsync(MS2CryptoMode.MS2F, true, new MemoryStream(this.DecryptedBytes), (uint)this.DecryptedBytes.Length).ConfigureAwait(false);
 
                 Assert.AreEqual(header, expectedHeader);
                 CollectionAssert.AreEqual(this.EncryptedBytes, bytes);
             }
 
             {
-                (Stream stream, MS2SizeHeader header) = await CryptoHelper.EncryptStreamToStreamAsync(MS2CryptoMode.MS2F, true, new MemoryStream(this.DecryptedBytes), (uint)this.DecryptedBytes.Length);
+                (Stream stream, MS2SizeHeader header) = await CryptoHelper.EncryptStreamToStreamAsync(MS2CryptoMode.MS2F, true, new MemoryStream(this.DecryptedBytes), (uint)this.DecryptedBytes.Length).ConfigureAwait(false);
 
                 Assert.AreEqual(header, expectedHeader);
                 byte[] bytes = new byte[header.EncodedSize];
-                uint bytesRead = (uint)stream.Read(bytes, 0, (int)header.EncodedSize);
+                uint bytesRead = (uint)await stream.ReadAsync(bytes, 0, (int)header.EncodedSize).ConfigureAwait(false);
                 Assert.AreEqual(bytesRead, header.EncodedSize);
                 CollectionAssert.AreEqual(this.EncryptedBytes, bytes);
             }
@@ -55,22 +55,22 @@ namespace MS2LibUnitTest
         {
             var header = new MS2SizeHeader((uint)this.EncryptedBytes.Length, 21u, 13u);
             {
-                byte[] bytes = await CryptoHelper.DecryptDataToDataAsync(MS2CryptoMode.MS2F, header, true, this.EncryptedBytes);
+                byte[] bytes = await CryptoHelper.DecryptDataToDataAsync(MS2CryptoMode.MS2F, header, true, this.EncryptedBytes).ConfigureAwait(false);
 
                 CollectionAssert.AreEqual(this.DecryptedBytes, bytes);
             }
 
             {
-                byte[] bytes = await CryptoHelper.DecryptStreamToDataAsync(MS2CryptoMode.MS2F, header, true, new MemoryStream(this.EncryptedBytes));
+                byte[] bytes = await CryptoHelper.DecryptStreamToDataAsync(MS2CryptoMode.MS2F, header, true, new MemoryStream(this.EncryptedBytes)).ConfigureAwait(false);
 
                 CollectionAssert.AreEqual(this.DecryptedBytes, bytes);
             }
 
             {
-                Stream stream = await CryptoHelper.DecryptStreamToStreamAsync(MS2CryptoMode.MS2F, header, true, new MemoryStream(this.EncryptedBytes));
+                Stream stream = await CryptoHelper.DecryptStreamToStreamAsync(MS2CryptoMode.MS2F, header, true, new MemoryStream(this.EncryptedBytes)).ConfigureAwait(false);
 
                 byte[] bytes = new byte[header.Size];
-                uint bytesRead = (uint)stream.Read(bytes, 0, (int)header.Size);
+                uint bytesRead = (uint)await stream.ReadAsync(bytes, 0, (int)header.Size).ConfigureAwait(false);
                 Assert.AreEqual(bytesRead, header.Size);
                 CollectionAssert.AreEqual(this.DecryptedBytes, bytes);
             }
@@ -87,8 +87,8 @@ namespace MS2LibUnitTest
             {
                 bool compress = true;
 
-                (byte[] encryptedBytes, MS2SizeHeader header) = await CryptoHelper.EncryptDataToDataAsync(cryptoMode, compress, bytesToEncrypt);
-                byte[] decryptedBytes = await CryptoHelper.DecryptDataToDataAsync(cryptoMode, header, compress, encryptedBytes);
+                (byte[] encryptedBytes, MS2SizeHeader header) = await CryptoHelper.EncryptDataToDataAsync(cryptoMode, compress, bytesToEncrypt).ConfigureAwait(false);
+                byte[] decryptedBytes = await CryptoHelper.DecryptDataToDataAsync(cryptoMode, header, compress, encryptedBytes).ConfigureAwait(false);
 
                 CollectionAssert.AreEqual(bytesToEncrypt, decryptedBytes);
                 string decryptedMessage = encoding.GetString(decryptedBytes);
@@ -98,8 +98,8 @@ namespace MS2LibUnitTest
             {
                 bool compress = false;
 
-                (byte[] encryptedBytes, MS2SizeHeader header) = await CryptoHelper.EncryptDataToDataAsync(cryptoMode, compress, bytesToEncrypt);
-                byte[] decryptedBytes = await CryptoHelper.DecryptDataToDataAsync(cryptoMode, header, compress, encryptedBytes);
+                (byte[] encryptedBytes, MS2SizeHeader header) = await CryptoHelper.EncryptDataToDataAsync(cryptoMode, compress, bytesToEncrypt).ConfigureAwait(false);
+                byte[] decryptedBytes = await CryptoHelper.DecryptDataToDataAsync(cryptoMode, header, compress, encryptedBytes).ConfigureAwait(false);
 
                 CollectionAssert.AreEqual(bytesToEncrypt, decryptedBytes);
                 string decryptedMessage = encoding.GetString(decryptedBytes);

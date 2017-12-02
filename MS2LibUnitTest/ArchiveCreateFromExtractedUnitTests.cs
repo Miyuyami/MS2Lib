@@ -11,72 +11,189 @@ namespace MS2LibUnitTest
     [TestClass]
     public class ArchiveCreateFromExtractedUnitTests
     {
-        private const string HeaderFilePath = @"..\TestData\Xml.m2h";
-        private const string DataFilePath = @"..\TestData\Xml.m2d";
+        [TestMethod]
+        public async Task TestCreateConsistencyMS2F()
+        {
+            const string archiveName = "PrecomputedTerrain";
+            const string folderToArchive = @"C:\Users\Miyu\Desktop\ReleaseOutput\Resource\" + archiveName;
+            string folderToArchiveFullPath = Path.GetFullPath(folderToArchive) + @"\";
+            string[] filesToArchive = Directory.GetFiles(folderToArchive, "*.*", SearchOption.AllDirectories).Select(p => Path.GetFullPath(p)).ToArray();
 
-        private const string ArchiveName = "Xml";
-        private const string FolderToArchive = @"C:\Users\Miyu\Desktop\ReleaseOutput\" + ArchiveName;
-        private static string FolderToArchiveFullPath = Path.GetFullPath(FolderToArchive) + @"\";
-        private static string[] FilesToArchive = Directory.GetFiles(FolderToArchive, "*.*", SearchOption.AllDirectories).Select(p => Path.GetFullPath(p)).ToArray();
+            const string headerFilePath = @"..\TestData\PrecomputedTerrain.m2h";
+            const string dataFilePath = @"..\TestData\PrecomputedTerrain.m2d";
+            MS2CryptoMode archiveCryptoMode = MS2CryptoMode.MS2F;
+
+            List<MS2File> files = new List<MS2File>(filesToArchive.Length);
+            for (int i = 0; i < filesToArchive.Length; i++)
+            {
+                string file = filesToArchive[i];
+
+                files.Add(MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, archiveCryptoMode, file));
+            }
+
+            const string testArchiveName = "FromExtractedMS2F";
+            const string headerTestFileName = testArchiveName + ".m2h";
+            const string dataTestFileName = testArchiveName + ".m2d";
+
+            try
+            {
+                await MS2Archive.Save(archiveCryptoMode, files, headerTestFileName, dataTestFileName, RunMode.Async2).ConfigureAwait(false);
+                Assert.IsTrue(File.Exists(headerTestFileName));
+                Assert.IsTrue(File.Exists(dataTestFileName));
+
+                using (MS2Archive archive = await MS2Archive.Load(headerFilePath, dataFilePath).ConfigureAwait(false))
+                {
+                    Dictionary<uint, MS2File> mappedFiles = archive.Files.Zip(files, (o, s) => (o, s))
+                                                                         .ToDictionary(f => f.o.Id, f => files.Where(sf => sf.Name == f.o.Name).First());
+                    Assert.AreEqual(archive.CryptoMode, archiveCryptoMode);
+                    Assert.AreEqual(archive.Files.Count, filesToArchive.Length);
+                    //Assert.AreEqual(archive.Name, ArchiveName);
+
+                    Task[] tasks = new Task[filesToArchive.Length];
+
+                    for (int i = 0; i < filesToArchive.Length; i++)
+                    {
+                        int ic = i;
+                        tasks[ic] = Task.Run(async () =>
+                        {
+                            MS2File file = archive.Files[ic];
+                            MS2File savedFile = mappedFiles[file.Id];
+                            var (savedStream, savedShouldDispose) = await savedFile.GetDecryptedStreamAsync().ConfigureAwait(false);
+                            try
+                            {
+                                Assert.AreEqual(file.Id, (uint)ic + 1);
+                                Assert.AreEqual(file.CompressionType, CompressionType.Zlib);
+                                Assert.IsTrue(file.IsZlibCompressed);
+                                Assert.AreEqual(file.Name, savedFile.Name);
+                                Assert.AreEqual(file.Header.CompressionType, file.CompressionType);
+                                Assert.AreEqual(file.Header.Size, (uint)savedStream.Length);
+
+                                (Stream stream, bool shouldDispose) = await file.GetDecryptedStreamAsync().ConfigureAwait(false);
+                                try
+                                {
+                                    byte[] savedBytes = new byte[savedStream.Length];
+                                    byte[] originalBytes = new byte[stream.Length];
+                                    int savedReadBytes = await savedStream.ReadAsync(savedBytes, 0, savedBytes.Length).ConfigureAwait(false);
+                                    int originalReadBytes = await stream.ReadAsync(originalBytes, 0, originalBytes.Length).ConfigureAwait(false);
+                                    Assert.AreEqual(originalReadBytes, savedReadBytes);
+
+                                    CollectionAssert.AreEqual(originalBytes, savedBytes);
+                                }
+                                finally
+                                {
+                                    if (shouldDispose)
+                                    {
+                                        stream.Dispose();
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                if (savedShouldDispose)
+                                {
+                                    savedStream.Dispose();
+                                }
+                            }
+                        });
+                    }
+
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                File.Delete(headerTestFileName);
+                File.Delete(dataTestFileName);
+            }
+        }
 
         [TestMethod]
         public async Task TestCreateConsistencyNS2F()
         {
-            MS2CryptoMode cryptoMode = MS2CryptoMode.NS2F;
+            const string archiveName = "Xml";
+            const string folderToArchive = @"C:\Users\Miyu\Desktop\ReleaseOutput\" + archiveName;
+            string folderToArchiveFullPath = Path.GetFullPath(folderToArchive) + @"\";
+            string[] filesToArchive = Directory.GetFiles(folderToArchive, "*.*", SearchOption.AllDirectories).Select(p => Path.GetFullPath(p)).ToArray();
 
-            List<MS2File> files = new List<MS2File>(FilesToArchive.Length);
-            for (int i = 0; i < FilesToArchive.Length; i++)
+            const string headerFilePath = @"..\TestData\Xml.m2h";
+            const string dataFilePath = @"..\TestData\Xml.m2d";
+            MS2CryptoMode archiveCryptoMode = MS2CryptoMode.NS2F;
+
+            List<MS2File> files = new List<MS2File>(filesToArchive.Length);
+            for (int i = 0; i < filesToArchive.Length; i++)
             {
-                string file = FilesToArchive[i];
+                string file = filesToArchive[i];
 
-                files.Add(MS2File.Create((uint)i, file.Remove(FolderToArchiveFullPath), CompressionType.Zlib, cryptoMode, file));
+                files.Add(MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, archiveCryptoMode, file));
             }
 
-            const string headerTestFileName = ArchiveName + ".m2h";
-            const string dataTestFileName = ArchiveName + ".m2d";
+            const string testArchiveName = "FromExtractedNS2F";
+            const string headerTestFileName = testArchiveName + ".m2h";
+            const string dataTestFileName = testArchiveName + ".m2d";
 
             try
             {
-                await MS2Archive.Save(cryptoMode, files, headerTestFileName, dataTestFileName);
+                await MS2Archive.Save(archiveCryptoMode, files, headerTestFileName, dataTestFileName, RunMode.Async2).ConfigureAwait(false);
                 Assert.IsTrue(File.Exists(headerTestFileName));
                 Assert.IsTrue(File.Exists(dataTestFileName));
 
-                using (MS2Archive archive = await MS2Archive.Load(HeaderFilePath, DataFilePath))
+                using (MS2Archive archive = await MS2Archive.Load(headerFilePath, dataFilePath).ConfigureAwait(false))
                 {
-                    Assert.AreEqual(archive.CryptoMode, cryptoMode);
-                    Assert.AreEqual(archive.Files.Count, FilesToArchive.Length);
+                    Dictionary<uint, MS2File> mappedFiles = archive.Files.Zip(files, (o, s) => (o, s))
+                                                                         .ToDictionary(f => f.o.Id, f => files.Where(sf => sf.Name == f.o.Name).First());
+                    Assert.AreEqual(archive.CryptoMode, archiveCryptoMode);
+                    Assert.AreEqual(archive.Files.Count, filesToArchive.Length);
                     //Assert.AreEqual(archive.Name, ArchiveName);
 
-                    for (int i = 0; i < FilesToArchive.Length; i++)
+                    Task[] tasks = new Task[filesToArchive.Length];
+
+                    for (int i = 0; i < filesToArchive.Length; i++)
                     {
-                        FileStream fsFile = File.OpenRead(FilesToArchive[i]);
-                        MS2File file = archive.Files[i];
-                        Assert.AreEqual(file.Id, (i + 1).ToString());
-                        Assert.AreEqual(file.CompressionType, CompressionType.Zlib);
-                        Assert.IsTrue(file.IsZlibCompressed);
-                        Assert.AreEqual(file.Name, FilesToArchive[i].Remove(FolderToArchiveFullPath));
-                        Assert.AreEqual(file.Header.CompressionType, file.CompressionType);
-                        Assert.AreEqual(file.Header.Size, (uint)fsFile.Length);
-
-                        (Stream stream, bool shouldDispose) = await file.GetDecryptedStreamAsync();
-                        try
+                        int ic = i;
+                        tasks[ic] = Task.Run(async () =>
                         {
-                            byte[] originalBytes = new byte[fsFile.Length];
-                            byte[] savedBytes = new byte[stream.Length];
-                            int originalReadBytes = await fsFile.ReadAsync(originalBytes, 0, originalBytes.Length);
-                            int savedReadBytes = await stream.ReadAsync(savedBytes, 0, savedBytes.Length);
-                            Assert.AreEqual(originalReadBytes, savedReadBytes);
-
-                            CollectionAssert.AreEqual(originalBytes, savedBytes);
-                        }
-                        finally
-                        {
-                            if (shouldDispose)
+                            MS2File file = archive.Files[ic];
+                            MS2File savedFile = mappedFiles[file.Id];
+                            var (savedStream, savedShouldDispose) = await savedFile.GetDecryptedStreamAsync().ConfigureAwait(false);
+                            try
                             {
-                                stream.Dispose();
+                                Assert.AreEqual(file.Id, (uint)ic + 1);
+                                Assert.AreEqual(file.CompressionType, CompressionType.Zlib);
+                                Assert.IsTrue(file.IsZlibCompressed);
+                                Assert.AreEqual(file.Name, savedFile.Name);
+                                Assert.AreEqual(file.Header.CompressionType, file.CompressionType);
+                                Assert.AreEqual(file.Header.Size, (uint)savedStream.Length);
+
+                                (Stream stream, bool shouldDispose) = await file.GetDecryptedStreamAsync().ConfigureAwait(false);
+                                try
+                                {
+                                    byte[] savedBytes = new byte[savedStream.Length];
+                                    byte[] originalBytes = new byte[stream.Length];
+                                    int savedReadBytes = await savedStream.ReadAsync(savedBytes, 0, savedBytes.Length).ConfigureAwait(false);
+                                    int originalReadBytes = await stream.ReadAsync(originalBytes, 0, originalBytes.Length).ConfigureAwait(false);
+                                    Assert.AreEqual(originalReadBytes, savedReadBytes);
+
+                                    CollectionAssert.AreEqual(originalBytes, savedBytes);
+                                }
+                                finally
+                                {
+                                    if (shouldDispose)
+                                    {
+                                        stream.Dispose();
+                                    }
+                                }
                             }
-                        }
+                            finally
+                            {
+                                if (savedShouldDispose)
+                                {
+                                    savedStream.Dispose();
+                                }
+                            }
+                        });
                     }
+
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
             }
             finally
