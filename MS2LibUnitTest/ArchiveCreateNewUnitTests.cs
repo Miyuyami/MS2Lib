@@ -21,12 +21,12 @@ namespace MS2LibUnitTest
 
             MS2CryptoMode cryptoMode = MS2CryptoMode.MS2F;
 
-            List<MS2File> files = new List<MS2File>(filesToArchive.Length);
+            MS2File[] files = new MS2File[filesToArchive.Length];
             for (int i = 0; i < filesToArchive.Length; i++)
             {
                 string file = filesToArchive[i];
 
-                files.Add(MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, cryptoMode, file));
+                files[i] = MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, cryptoMode, file);
             }
 
             const string testArchiveName = "TestArchiveMS2F";
@@ -94,12 +94,12 @@ namespace MS2LibUnitTest
 
             MS2CryptoMode cryptoMode = MS2CryptoMode.NS2F;
 
-            List<MS2File> files = new List<MS2File>(filesToArchive.Length);
+            MS2File[] files = new MS2File[filesToArchive.Length];
             for (int i = 0; i < filesToArchive.Length; i++)
             {
                 string file = filesToArchive[i];
 
-                files.Add(MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, cryptoMode, file));
+                files[i] = MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, cryptoMode, file);
             }
 
             const string testArchiveName = "TestArchiveNS2F";

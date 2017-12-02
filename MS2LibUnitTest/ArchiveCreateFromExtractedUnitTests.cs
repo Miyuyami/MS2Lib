@@ -23,12 +23,12 @@ namespace MS2LibUnitTest
             const string dataFilePath = @"..\TestData\PrecomputedTerrain.m2d";
             MS2CryptoMode archiveCryptoMode = MS2CryptoMode.MS2F;
 
-            List<MS2File> files = new List<MS2File>(filesToArchive.Length);
+            MS2File[] files = new MS2File[filesToArchive.Length];
             for (int i = 0; i < filesToArchive.Length; i++)
             {
                 string file = filesToArchive[i];
 
-                files.Add(MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, archiveCryptoMode, file));
+                files[i] = MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, archiveCryptoMode, file);
             }
 
             const string testArchiveName = "FromExtractedMS2F";
@@ -119,12 +119,12 @@ namespace MS2LibUnitTest
             const string dataFilePath = @"..\TestData\Xml.m2d";
             MS2CryptoMode archiveCryptoMode = MS2CryptoMode.NS2F;
 
-            List<MS2File> files = new List<MS2File>(filesToArchive.Length);
+            MS2File[] files = new MS2File[filesToArchive.Length];
             for (int i = 0; i < filesToArchive.Length; i++)
             {
                 string file = filesToArchive[i];
 
-                files.Add(MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, archiveCryptoMode, file));
+                files[i] = MS2File.Create((uint)i + 1u, file.Remove(folderToArchiveFullPath), CompressionType.Zlib, archiveCryptoMode, file);
             }
 
             const string testArchiveName = "FromExtractedNS2F";

@@ -145,7 +145,7 @@ namespace MS2Lib
         #endregion
 
         #region saving archive
-        public static async Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, string headerFilePath, string dataFilePath, RunMode runMode)
+        public static async Task Save(MS2CryptoMode cryptoMode, MS2File[] files, string headerFilePath, string dataFilePath, RunMode runMode)
         {
             using (Stream headerStream = File.Open(headerFilePath, FileMode.Create, FileAccess.Write, FileShare.Read))
             {
@@ -176,7 +176,7 @@ namespace MS2Lib
         /// <param name="dataStream"></param>
         /// <param name="runMode"></param>
         /// <returns></returns>
-        public static Task Save(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream, RunMode runMode)
+        public static Task Save(MS2CryptoMode cryptoMode, MS2File[] files, Stream headerStream, Stream dataStream, RunMode runMode)
         {
             switch (runMode)
             {
@@ -189,7 +189,7 @@ namespace MS2Lib
             }
         }
 
-        private static async Task SaveSync(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream)
+        private static async Task SaveSync(MS2CryptoMode cryptoMode, MS2File[] files, Stream headerStream, Stream dataStream)
         {
             MS2SizeHeader header;
             MS2SizeHeader dataHeader;
@@ -199,7 +199,7 @@ namespace MS2Lib
             using (var archiveInfoHeaderStream = new MemoryStream())
             using (var archiveHeaderStream = new MemoryStream())
             {
-                for (int i = 0; i < files.Count; i++)
+                for (int i = 0; i < files.Length; i++)
                 {
                     MS2File file = files[i];
                     uint offset = (uint)dataStream.Position;
@@ -235,10 +235,10 @@ namespace MS2Lib
                 switch (cryptoMode)
                 {
                     case MS2CryptoMode.MS2F:
-                        await SaveMS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                        await SaveMS2F(cryptoMode, (uint)files.Length, header, dataHeader, bwHeader).ConfigureAwait(false);
                         break;
                     case MS2CryptoMode.NS2F:
-                        await SaveNS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                        await SaveNS2F(cryptoMode, (uint)files.Length, header, dataHeader, bwHeader).ConfigureAwait(false);
                         break;
                     default:
                     case MS2CryptoMode.OS2F:
@@ -255,7 +255,7 @@ namespace MS2Lib
             }
         }
 
-        private static async Task SaveAsync(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, Stream dataStream)
+        private static async Task SaveAsync(MS2CryptoMode cryptoMode, MS2File[] files, Stream headerStream, Stream dataStream)
         {
             MS2SizeHeader header;
             MS2SizeHeader dataHeader;
@@ -265,9 +265,9 @@ namespace MS2Lib
             using (var archiveInfoHeaderStream = new MemoryStream())
             using (var archiveHeaderStream = new MemoryStream())
             {
-                var tasks = new Task<(MemoryStream ms, MS2SizeHeader header)>[files.Count];
+                var tasks = new Task<(MemoryStream ms, MS2SizeHeader header)>[files.Length];
 
-                for (int i = 0; i < files.Count; i++)
+                for (int i = 0; i < files.Length; i++)
                 {
                     MS2File file = files[i];
                     tasks[i] = Task.Run(async () =>
@@ -294,7 +294,7 @@ namespace MS2Lib
                 await Task.WhenAll(tasks).ConfigureAwait(false);
 
                 uint offset = 0;
-                for (int i = 0; i < files.Count; i++)
+                for (int i = 0; i < files.Length; i++)
                 {
                     MS2File file = files[i];
                     var (ms, sizeHeader) = await tasks[i].ConfigureAwait(false);
@@ -324,10 +324,10 @@ namespace MS2Lib
                     switch (cryptoMode)
                     {
                         case MS2CryptoMode.MS2F:
-                            await SaveMS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                            await SaveMS2F(cryptoMode, (uint)files.Length, header, dataHeader, bwHeader).ConfigureAwait(false);
                             break;
                         case MS2CryptoMode.NS2F:
-                            await SaveNS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                            await SaveNS2F(cryptoMode, (uint)files.Length, header, dataHeader, bwHeader).ConfigureAwait(false);
                             break;
                         default:
                         case MS2CryptoMode.OS2F:
@@ -345,7 +345,7 @@ namespace MS2Lib
             }
         }
 
-        private static async Task SaveAsync2(MS2CryptoMode cryptoMode, List<MS2File> files, Stream headerStream, string dataFilePath)
+        private static async Task SaveAsync2(MS2CryptoMode cryptoMode, MS2File[] files, Stream headerStream, string dataFilePath)
         {
             MS2SizeHeader header;
             MS2SizeHeader dataHeader;
@@ -355,10 +355,10 @@ namespace MS2Lib
             using (var archiveInfoHeaderStream = new MemoryStream())
             using (var archiveHeaderStream = new MemoryStream())
             {
-                var tasks = new Task<(MemoryStream ms, MS2SizeHeader header)>[files.Count];
+                var tasks = new Task<(MemoryStream ms, MS2SizeHeader header)>[files.Length];
 
                 // load the files into memory streams
-                for (int i = 0; i < files.Count; i++)
+                for (int i = 0; i < files.Length; i++)
                 {
                     MS2File file = files[i];
                     tasks[i] = Task.Run(async () =>
@@ -385,7 +385,7 @@ namespace MS2Lib
 
                 // create the header file
                 uint offset = 0;
-                for (int i = 0; i < files.Count; i++)
+                for (int i = 0; i < files.Length; i++)
                 {
                     MS2File file = files[i];
                     var (_, sizeHeader) = await tasks[i].ConfigureAwait(false);
@@ -402,9 +402,9 @@ namespace MS2Lib
                 // create the data file
                 using (MemoryMappedFile mmf = MemoryMappedFile.CreateNew(Path.GetFileNameWithoutExtension(dataFilePath), offset, MemoryMappedFileAccess.ReadWrite))
                 {
-                    Task[] tasksWrite = new Task[files.Count];
+                    Task[] tasksWrite = new Task[files.Length];
 
-                    for (int i = 0; i < files.Count; i++)
+                    for (int i = 0; i < files.Length; i++)
                     {
                         MS2File file = files[i];
                         var task = tasks[i];
@@ -441,10 +441,10 @@ namespace MS2Lib
                     switch (cryptoMode)
                     {
                         case MS2CryptoMode.MS2F:
-                            await SaveMS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                            await SaveMS2F(cryptoMode, (uint)files.Length, header, dataHeader, bwHeader).ConfigureAwait(false);
                             break;
                         case MS2CryptoMode.NS2F:
-                            await SaveNS2F(cryptoMode, (uint)files.Count, header, dataHeader, bwHeader).ConfigureAwait(false);
+                            await SaveNS2F(cryptoMode, (uint)files.Length, header, dataHeader, bwHeader).ConfigureAwait(false);
                             break;
                         default:
                         case MS2CryptoMode.OS2F:
@@ -512,16 +512,16 @@ namespace MS2Lib
         #endregion
 
         public Task Save(string headerFilePath, string dataFilePath, RunMode runMode)
-            => Save(this.CryptoMode, this.Files, headerFilePath, dataFilePath, runMode);
+            => Save(this.CryptoMode, this.Files.ToArray(), headerFilePath, dataFilePath, runMode);
 
         public Task Save(MS2CryptoMode newCryptoMode, string headerFilePath, string dataFilePath, RunMode runMode)
-            => Save(newCryptoMode, this.Files, headerFilePath, dataFilePath, runMode);
+            => Save(newCryptoMode, this.Files.ToArray(), headerFilePath, dataFilePath, runMode);
 
         public Task Save(Stream headerStream, Stream dataStream, RunMode runMode)
-            => Save(this.CryptoMode, this.Files, headerStream, dataStream, runMode);
+            => Save(this.CryptoMode, this.Files.ToArray(), headerStream, dataStream, runMode);
 
         public Task Save(MS2CryptoMode newCryptoMode, Stream headerStream, Stream dataStream, RunMode runMode)
-            => Save(newCryptoMode, this.Files, headerStream, dataStream, runMode);
+            => Save(newCryptoMode, this.Files.ToArray(), headerStream, dataStream, runMode);
 
         private string DebuggerDisplay
             => $"Files = {this.Files.Count}, Name = {this.DataFile}, Mode = {this.CryptoMode}";
