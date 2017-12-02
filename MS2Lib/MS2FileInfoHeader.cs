@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -14,27 +15,28 @@ namespace MS2Lib
     {
         private const int NumberOfProperties = 3;
         private const string Default = "";
-        private List<string> Properties { get; }
+        private readonly List<string> _Properties;
+        public ReadOnlyCollection<string> Properties => this._Properties.AsReadOnly();
 
         public string Id
         {
-            get => this.Properties[0];
-            set => this.Properties[0] = value;
+            get => this._Properties[0];
+            set => this._Properties[0] = value;
         }
 
         public string RootFolderId => BuildRootFolderId(this.Name);
 
         public string Name
         {
-            get => this.Properties[2];
-            set => this.Properties[2] = value;
+            get => this._Properties[2];
+            set => this._Properties[2] = value;
         }
 
         private MS2FileInfoHeader(List<string> properties)
         {
             Debug.Assert(properties.Count == NumberOfProperties);
 
-            this.Properties = properties;
+            this._Properties = properties;
         }
 
         internal static MS2FileInfoHeader Create(string id, MS2FileInfoHeader other)
@@ -107,14 +109,14 @@ namespace MS2Lib
 
         internal async Task Save(Stream stream)
         {
-            if (this.Properties.Count == 0)
+            if (this._Properties.Count == 0)
             {
                 return;
             }
 
             using (var sw = new UnbufferedStreamWriter(stream, Encoding.ASCII, true))
             {
-                string line = String.Join(",", this.Properties.Where(s => !String.IsNullOrEmpty(s)));
+                string line = String.Join(",", this._Properties.Where(s => !String.IsNullOrEmpty(s)));
 
                 await sw.WriteLineAsync(line).ConfigureAwait(false);
             }
@@ -122,9 +124,9 @@ namespace MS2Lib
 
         private string GetOrDefault(int index)
         {
-            if (this.Properties.Count > index)
+            if (this._Properties.Count > index)
             {
-                return this.Properties[index];
+                return this._Properties[index];
             }
 
             return Default;
@@ -136,6 +138,6 @@ namespace MS2Lib
         }
 
         private string DebuggerDisplay
-            => $"Count = {this.Properties.Count}";
+            => $"Count = {this._Properties.Count}";
     }
 }
