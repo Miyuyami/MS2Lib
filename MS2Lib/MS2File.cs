@@ -17,7 +17,24 @@ namespace MS2Lib
         private readonly MemoryMappedFile DataMemoryMappedFile;
         private readonly Stream DataStream;
 
-        public uint Id => UInt32.Parse(this.InfoHeader.Id);
+        public uint Id
+        {
+            get
+            {
+                if (UInt32.TryParse(this.InfoHeader.Id, out uint result))
+                {
+                    return result;
+                }
+                else if (this.Header != null)
+                {
+                    return this.Header.Id;
+                }
+                else
+                {
+                    throw new Exception("The file does not have a valid ID.");
+                }
+            }
+        }
         public string Name => this.InfoHeader.Name;
         public CompressionType CompressionType { get; }
         public bool IsZlibCompressed
