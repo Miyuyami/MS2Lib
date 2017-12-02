@@ -54,8 +54,11 @@ namespace MS2Lib
                 }
             }
         }
-        public MS2FileInfoHeader InfoHeader { get; internal set; }
-        public MS2FileHeader Header { get; internal set; }
+        public MS2FileInfoHeader InfoHeader { get; }
+        /// <summary>
+        /// Property only available if the file is provided from the archive after a loading method from <see cref="MS2Archive"/> was executed.
+        /// </summary>
+        public MS2FileHeader Header { get; }
 
         private MS2File(MS2FileInfoHeader infoHeader, MS2FileHeader header, MS2CryptoMode archiveCryptoMode, MemoryMappedFile dataFile)
         {
@@ -95,6 +98,12 @@ namespace MS2Lib
             this.CompressionType = compressionType;
             this.IsDataEncrypted = false;
         }
+
+        public static MS2File CreateUpdate(MS2File existing, string dataFilePath)
+            => new MS2File(existing.InfoHeader, existing.CompressionType, existing.ArchiveCryptoMode, File.OpenRead(dataFilePath));
+
+        public static MS2File CreateUpdate(MS2File existing, Stream dataStream)
+            => new MS2File(existing.InfoHeader, existing.CompressionType, existing.ArchiveCryptoMode, dataStream);
 
         public static MS2File Create(uint id, string pathInArchive, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, string dataFilePath)
             => Create(id, pathInArchive, compressionType, archiveCryptoMode, File.OpenRead(dataFilePath));
