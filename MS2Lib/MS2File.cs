@@ -17,7 +17,7 @@ namespace MS2Lib
         private readonly MemoryMappedFile DataMemoryMappedFile;
         private readonly Stream DataStream;
 
-        public string Id => this.InfoHeader.Id;
+        public uint Id => UInt32.Parse(this.InfoHeader.Id);
         public string Name => this.InfoHeader.Name;
         public CompressionType CompressionType { get; }
         public bool IsZlibCompressed

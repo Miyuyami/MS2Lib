@@ -201,15 +201,14 @@ namespace MS2Lib
             {
                 for (int i = 0; i < files.Count; i++)
                 {
-                    uint id = (uint)i + 1u;
                     MS2File file = files[i];
                     uint offset = (uint)dataStream.Position;
 
                     (Stream Stream, bool ShouldDispose, MS2SizeHeader Header) data = await file.GetEncryptedStreamAsync().ConfigureAwait(false);
                     try
                     {
-                        var fileInfoHeader = MS2FileInfoHeader.Create(id.ToString(), file.InfoHeader);
-                        var fileHeader = MS2FileHeader.Create(id, offset, file.CompressionType, data.Header);
+                        var fileInfoHeader = file.InfoHeader;//MS2FileInfoHeader.Create(id.ToString(), file.InfoHeader);
+                        var fileHeader = MS2FileHeader.Create(file.Id, offset, file.CompressionType, data.Header);
 
                         await fileInfoHeader.Save(archiveInfoHeaderStream).ConfigureAwait(false);
                         await fileHeader.Save(cryptoMode, archiveHeaderStream).ConfigureAwait(false);
@@ -297,7 +296,6 @@ namespace MS2Lib
                 uint offset = 0;
                 for (int i = 0; i < files.Count; i++)
                 {
-                    uint id = (uint)i + 1u;
                     MS2File file = files[i];
                     var (ms, sizeHeader) = await tasks[i].ConfigureAwait(false);
                     using (ms)
@@ -306,8 +304,8 @@ namespace MS2Lib
                         await ms.CopyToAsync(dataStream).ConfigureAwait(false);
                     }
 
-                    var fileInfoHeader = MS2FileInfoHeader.Create(id.ToString(), file.InfoHeader);
-                    var fileHeader = MS2FileHeader.Create(id, offset, file.CompressionType, sizeHeader);
+                    var fileInfoHeader = file.InfoHeader;//MS2FileInfoHeader.Create(file.Id.ToString(), file.InfoHeader);
+                    var fileHeader = MS2FileHeader.Create(file.Id, offset, file.CompressionType, sizeHeader);
 
                     offset += sizeHeader.EncodedSize;
 
@@ -389,12 +387,11 @@ namespace MS2Lib
                 uint offset = 0;
                 for (int i = 0; i < files.Count; i++)
                 {
-                    uint id = (uint)i + 1u;
                     MS2File file = files[i];
                     var (_, sizeHeader) = await tasks[i].ConfigureAwait(false);
 
-                    file.InfoHeader = MS2FileInfoHeader.Create(id.ToString(), file.InfoHeader);
-                    file.Header = MS2FileHeader.Create(id, offset, file.CompressionType, sizeHeader);
+                    file.InfoHeader = file.InfoHeader;// MS2FileInfoHeader.Create(id.ToString(), file.InfoHeader);
+                    file.Header = MS2FileHeader.Create(file.Id, offset, file.CompressionType, sizeHeader);
 
                     offset += sizeHeader.EncodedSize;
 
