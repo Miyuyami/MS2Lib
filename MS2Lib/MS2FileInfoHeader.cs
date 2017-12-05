@@ -47,6 +47,11 @@ namespace MS2Lib
 
         private static string BuildRootFolderId(string fileName)
         {
+            if (String.IsNullOrEmpty(fileName))
+            {
+                return String.Empty;
+            }
+
             string rootDirectory = PathEx.GetRootDirectory(fileName);
             if (String.IsNullOrWhiteSpace(rootDirectory))
             {
