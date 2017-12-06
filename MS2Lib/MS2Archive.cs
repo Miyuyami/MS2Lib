@@ -49,13 +49,13 @@ namespace MS2Lib
 
         public static Task<MS2Archive> Load(Stream headerStream, FileStream dataStream)
         {
-            string mapName = Path.GetFileNameWithoutExtension(dataStream.Name);
-            var dataMemoryMappedFile = MemoryMappedFile.CreateFromFile(dataStream, mapName, 0L, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
+            string name = Path.GetFileNameWithoutExtension(dataStream.Name);
+            var dataMemoryMappedFile = MemoryMappedFile.CreateFromFile(dataStream, Guid.NewGuid().ToString(), 0L, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
 
-            return Load(headerStream, mapName, dataMemoryMappedFile);
+            return Load(headerStream, name, dataMemoryMappedFile);
         }
 
-        private static async Task<MS2Archive> Load(Stream headerStream, string mapName, MemoryMappedFile dataMemoryMappedFile)
+        private static async Task<MS2Archive> Load(Stream headerStream, string name, MemoryMappedFile dataMemoryMappedFile)
         {
             using (var br = new BinaryReader(headerStream, Encoding.ASCII, true))
             {
@@ -64,9 +64,9 @@ namespace MS2Lib
                 switch (cryptoMode)
                 {
                     case MS2CryptoMode.MS2F:
-                        return await LoadMS2F(cryptoMode, br, mapName, dataMemoryMappedFile).ConfigureAwait(false);
+                        return await LoadMS2F(cryptoMode, br, name, dataMemoryMappedFile).ConfigureAwait(false);
                     case MS2CryptoMode.NS2F:
-                        return await LoadNS2F(cryptoMode, br, mapName, dataMemoryMappedFile).ConfigureAwait(false);
+                        return await LoadNS2F(cryptoMode, br, name, dataMemoryMappedFile).ConfigureAwait(false);
                     default:
                     case MS2CryptoMode.OS2F:
                     case MS2CryptoMode.PS2F:
@@ -302,7 +302,7 @@ namespace MS2Lib
                         ms.Position = 0;
                         await ms.CopyToAsync(dataStream).ConfigureAwait(false);
                     }
-                    
+
                     var fileHeader = MS2FileHeader.Create(file.Id, offset, file.CompressionType, sizeHeader);
 
                     offset += sizeHeader.EncodedSize;
@@ -398,7 +398,7 @@ namespace MS2Lib
                 }
 
                 // create the data file
-                using (MemoryMappedFile mmf = MemoryMappedFile.CreateNew(Path.GetFileNameWithoutExtension(dataFilePath), offset, MemoryMappedFileAccess.ReadWrite))
+                using (MemoryMappedFile mmf = MemoryMappedFile.CreateNew(Guid.NewGuid().ToString(), offset, MemoryMappedFileAccess.ReadWrite))
                 {
                     Task[] tasksWrite = new Task[files.Length];
 
