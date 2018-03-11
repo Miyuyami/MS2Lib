@@ -219,7 +219,7 @@ namespace MS2Lib
             }
         }
 
-        //~MS2Archive()
+        //~MS2File()
         //{
         //    this.Dispose(false);
         //}
