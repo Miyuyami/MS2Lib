@@ -5,21 +5,19 @@ namespace MS2Lib
 {
     public class MultiArrayFile
     {
-        private readonly string FilePath;
-        private readonly int ArraySize;
-        private readonly int Count;
-        private readonly int IndexCountMask;
+        public string FilePath { get; }
+        public int ArraySize { get; }
+        public int Count { get; }
 
         private readonly Lazy<byte[][]> LazyFile; // TODO: maybe array of lazy (Lazy<byte[]>[])
 
-        public byte[] this[uint index] => this.LazyFile.Value[index & this.IndexCountMask];
+        public byte[] this[uint index] => this.LazyFile.Value[index % this.Count];
 
         public MultiArrayFile(string filePath, int count, int arraySize)
         {
             this.FilePath = filePath;
-            this.ArraySize = arraySize;
             this.Count = count;
-            this.IndexCountMask = this.Count - 1;
+            this.ArraySize = arraySize;
 
             this.LazyFile = new Lazy<byte[][]>(this.CreateLazyImplementation);
         }
