@@ -113,10 +113,10 @@ namespace MS2Lib
                 uint dataEncodedSize = br.ReadUInt32() | br.ReadUInt32();
                 uint size = br.ReadUInt32() | br.ReadUInt32();
                 uint compressedSize = br.ReadUInt32() | br.ReadUInt32();
-                uint encodesSize = br.ReadUInt32() | br.ReadUInt32();
+                uint encodedSize = br.ReadUInt32() | br.ReadUInt32();
                 uint dataSize = br.ReadUInt32() | br.ReadUInt32();
 
-                var header = new MS2SizeHeader(encodesSize, compressedSize, size);
+                var header = new MS2SizeHeader(encodedSize, compressedSize, size);
                 var data = new MS2SizeHeader(dataEncodedSize, dataCompressedSize, dataSize);
                 List<MS2File> files = await LoadFiles(cryptoMode, header, data, fileCount, br, dataMemoryMappedFile).ConfigureAwait(false);
 
