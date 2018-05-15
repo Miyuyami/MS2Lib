@@ -22,42 +22,6 @@
     <OutputPath>..\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="Cryptography\MS2F\IV" />
-    <None Remove="Cryptography\MS2F\Key" />
-    <None Remove="Cryptography\NS2F\IV" />
-    <None Remove="Cryptography\NS2F\Key" />
-    <None Remove="Cryptography\OS2F\IV" />
-    <None Remove="Cryptography\OS2F\Key" />
-    <None Remove="Cryptography\PS2F\IV" />
-    <None Remove="Cryptography\PS2F\Key" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Cryptography\MS2F\IV">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\MS2F\Key">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\NS2F\IV">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\NS2F\Key">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\OS2F\IV">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\OS2F\Key">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\PS2F\IV">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Cryptography\PS2F\Key">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\..\..\..\Users\Miyu\Documents\GitHub\MiscUtils\MiscUtils\MiscUtils.csproj" />
     <ProjectReference Include="..\InteropDecrypt\InteropDecrypt.csproj" />
   </ItemGroup>
