@@ -48,8 +48,8 @@ namespace MS2Lib
 
         private static byte[] Decrypt(MS2CryptoMode cryptoMode, byte[] src, uint compressedSize, uint size)
         {
-            MultiArrayFile key;
-            MultiArrayFile iv;
+            IMultiArray key;
+            IMultiArray iv;
 
             switch (cryptoMode)
             {
@@ -72,8 +72,8 @@ namespace MS2Lib
 
         private static byte[] DecryptNoDecompress(MS2CryptoMode cryptoMode, byte[] src, uint size)
         {
-            MultiArrayFile key;
-            MultiArrayFile iv;
+            IMultiArray key;
+            IMultiArray iv;
 
             switch (cryptoMode)
             {
@@ -144,8 +144,8 @@ namespace MS2Lib
 
         private static byte[] EncryptNoCompress(MS2CryptoMode cryptoMode, byte[] src, uint compressedSize)
         {
-            MultiArrayFile key;
-            MultiArrayFile iv;
+            IMultiArray key;
+            IMultiArray iv;
 
             switch (cryptoMode)
             {

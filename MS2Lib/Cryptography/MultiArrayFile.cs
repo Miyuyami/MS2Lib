@@ -3,8 +3,9 @@ using System.IO;
 
 namespace MS2Lib
 {
-    public class MultiArrayFile
+    public class MultiArrayFile : IMultiArray
     {
+        string IMultiArray.Name => this.FilePath;
         public string FilePath { get; }
         public int ArraySize { get; }
         public int Count { get; }

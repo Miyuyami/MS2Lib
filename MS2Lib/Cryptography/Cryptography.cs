@@ -8,38 +8,38 @@
 
         public static class MS2F
         {
-            public const string FileNameIV = @"Cryptography\MS2F\IV";
-            public const string FileNameKey = @"Cryptography\MS2F\Key";
+            public const string FileNameIV = "MS2F_IV";
+            public const string FileNameKey = "MS2F_Key";
 
-            public readonly static MultiArrayFile IV = new MultiArrayFile(FileNameIV, Count, IvLength);
-            public readonly static MultiArrayFile Key = new MultiArrayFile(FileNameKey, Count, KeyLength);
+            public readonly static IMultiArray IV = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameIV, Count, IvLength);
+            public readonly static IMultiArray Key = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameKey, Count, KeyLength);
         }
 
         public static class NS2F
         {
-            public const string FileNameIV = @"Cryptography\NS2F\IV";
-            public const string FileNameKey = @"Cryptography\NS2F\Key";
+            public const string FileNameIV = "NS2F_IV";
+            public const string FileNameKey = "NS2F_Key";
 
-            public readonly static MultiArrayFile IV = new MultiArrayFile(FileNameIV, Count, IvLength);
-            public readonly static MultiArrayFile Key = new MultiArrayFile(FileNameKey, Count, KeyLength);
+            public readonly static IMultiArray IV = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameIV, Count, IvLength);
+            public readonly static IMultiArray Key = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameKey, Count, KeyLength);
         }
 
         public static class OS2F
         {
-            public const string FileNameIV = @"Cryptography\OS2F\IV";
-            public const string FileNameKey = @"Cryptography\OS2F\Key";
+            public const string FileNameIV = "OS2F_IV";
+            public const string FileNameKey = "OS2F_Key";
 
-            public readonly static MultiArrayFile IV = new MultiArrayFile(FileNameIV, Count, IvLength);
-            public readonly static MultiArrayFile Key = new MultiArrayFile(FileNameKey, Count, KeyLength);
+            public readonly static IMultiArray IV = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameIV, Count, IvLength);
+            public readonly static IMultiArray Key = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameKey, Count, KeyLength);
         }
 
         public static class PS2F
         {
-            public const string FileNameIV = @"Cryptography\PS2F\IV";
-            public const string FileNameKey = @"Cryptography\PS2F\Key";
+            public const string FileNameIV = "PS2F_IV";
+            public const string FileNameKey = "PS2F_Key";
 
-            public readonly static MultiArrayFile IV = new MultiArrayFile(FileNameIV, Count, IvLength);
-            public readonly static MultiArrayFile Key = new MultiArrayFile(FileNameKey, Count, KeyLength);
+            public readonly static IMultiArray IV = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameIV, Count, IvLength);
+            public readonly static IMultiArray Key = new MultiArrayResource(Properties.Resources.ResourceManager, FileNameKey, Count, KeyLength);
         }
     }
 }
