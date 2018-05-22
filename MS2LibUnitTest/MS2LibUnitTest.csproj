@@ -101,8 +101,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\Users\Miyu\Documents\GitHub\MiscUtils\MiscUtils\MiscUtils.csproj">
-      <Project>{121818d3-6873-4f90-b19c-16a74c9efee7}</Project>
+    <ProjectReference Include="..\MiscUtils\MiscUtils\MiscUtils.csproj">
+      <Project>{3bb7991b-8a23-44ab-baff-d80c0403bbf4}</Project>
       <Name>MiscUtils</Name>
     </ProjectReference>
     <ProjectReference Include="..\MS2Lib\MS2Lib.csproj">

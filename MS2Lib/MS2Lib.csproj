@@ -22,8 +22,8 @@
     <OutputPath>..\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\Users\Miyu\Documents\GitHub\MiscUtils\MiscUtils\MiscUtils.csproj" />
     <ProjectReference Include="..\InteropDecrypt\InteropDecrypt.csproj" />
+    <ProjectReference Include="..\MiscUtils\MiscUtils\MiscUtils.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
