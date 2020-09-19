@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,11 +21,12 @@ namespace MS2Lib
         protected MemoryMappedFile MappedDataFile { get; set; }
         protected IMS2SizeHeader FileInfoHeaderSize { get; set; }
         protected IMS2SizeHeader FileDataHeaderSize { get; set; }
-        protected Dictionary<long, IMS2File> Files { get; }
+        protected ConcurrentDictionary<long, IMS2File> Files { get; }
 
         public IMS2ArchiveCryptoRepository CryptoRepository { get; }
         public string Name { get; }
         public int Count => this.Files.Count;
+        public ReadOnlyDictionary<long, IMS2File> FileDictionary => new ReadOnlyDictionary<long, IMS2File>(this.Files);
         public IEnumerable<long> Keys => this.Files.Keys;
         public IEnumerable<IMS2File> Values => this.Files.Values;
 
@@ -49,7 +53,7 @@ namespace MS2Lib
         {
             this.CryptoRepository = cryptoRepo ?? throw new ArgumentNullException(nameof(cryptoRepo));
             this.Name = name;
-            this.Files = new Dictionary<long, IMS2File>();
+            this.Files = new ConcurrentDictionary<long, IMS2File>();
         }
 
         public bool ContainsKey(long key) => this.Files.ContainsKey(key);
@@ -105,44 +109,9 @@ namespace MS2Lib
             await this.LoadAsync(headerStream, dataStream).ConfigureAwait(false);
         }
 
-        public async Task LoadAsync(Stream headerStream, Stream dataStream)
+        protected async Task LoadAsync(FileStream headerStream, FileStream dataStream)
         {
-            if (this.IsDisposed)
-            {
-                throw new ObjectDisposedException(nameof(MS2Archive));
-            }
-
-            this.Reset();
-
-            MemoryMappedFile mmf;
-
-            if (dataStream is FileStream fileStream)
-            {
-                mmf = MemoryMappedFile.CreateFromFile(fileStream, this.Name, 0L, MemoryMappedFileAccess.Read, HandleInheritability.None, true);
-            }
-            else if (dataStream.CanSeek) // TODO: if CanSeek is true, does it always mean Length is supported?
-            {
-                using var mmfTemp = MemoryMappedFile.CreateNew(this.Name, dataStream.Length, MemoryMappedFileAccess.ReadWrite, MemoryMappedFileOptions.None, HandleInheritability.None);
-                mmf = MemoryMappedFile.OpenExisting(this.Name, MemoryMappedFileRights.Read, HandleInheritability.None);
-
-                using var s = mmfTemp.CreateViewStream();
-                await dataStream.CopyToAsync(s).ConfigureAwait(false);
-            }
-            else
-            {
-                // TODO: is there a way to optimize this?
-                using var ms = new MemoryStream();
-                await dataStream.CopyToAsync(ms).ConfigureAwait(false);
-                ms.Position = 0;
-
-                using var mmfTemp = MemoryMappedFile.CreateNew(this.Name, ms.Length, MemoryMappedFileAccess.ReadWrite, MemoryMappedFileOptions.None, HandleInheritability.None);
-                mmf = MemoryMappedFile.OpenExisting(this.Name, MemoryMappedFileRights.Read, HandleInheritability.None);
-
-                using var s = mmfTemp.CreateViewStream();
-                await ms.CopyToAsync(s).ConfigureAwait(false);
-            }
-
-            this.MappedDataFile = mmf;
+            this.MappedDataFile = MemoryMappedFile.CreateFromFile(dataStream, this.Name, 0L, MemoryMappedFileAccess.Read, HandleInheritability.None, true);
 
             try
             {
@@ -155,7 +124,7 @@ namespace MS2Lib
             }
         }
 
-        protected async Task InternalLoadAsync(Stream headerStream)
+        protected async Task InternalLoadAsync(FileStream headerStream)
         {
             using var br = new BinaryReader(headerStream, Encoding.ASCII, true);
 
@@ -173,7 +142,7 @@ namespace MS2Lib
             await this.LoadFilesAsync(headerStream, fileCount).ConfigureAwait(false);
         }
 
-        protected virtual async Task LoadFilesAsync(Stream headerStream, long fileCount)
+        protected virtual async Task LoadFilesAsync(FileStream headerStream, long fileCount)
         {
             IMS2FileInfoCrypto fileInfoCrypto = this.CryptoRepository.GetFileInfoReaderCrypto();
             IMS2FileHeaderCrypto fileHeaderCrypto = this.CryptoRepository.GetFileHeaderCrypto();
@@ -196,7 +165,7 @@ namespace MS2Lib
         #endregion
 
         #region SaveAsync
-        public async Task SaveAsync(string headerFilePath, string dataFilePath)
+        public async Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently, Func<IMS2File, CompressionType> fileCompressionTypeFunc)
         {
             if (this.IsDisposed)
             {
@@ -204,21 +173,23 @@ namespace MS2Lib
             }
 
             using var headerStream = File.OpenWrite(headerFilePath);
-            using var dataStream = File.OpenWrite(dataFilePath);
 
             headerStream.SetLength(0L);
-            dataStream.SetLength(0L);
 
-            await this.SaveAsync(headerStream, dataStream).ConfigureAwait(false);
+            if (shouldSaveConcurrently)
+            {
+                await this.SaveConcurrentAsync(headerStream, dataFilePath, fileCompressionTypeFunc);
+            }
+            else
+            {
+                using var dataStream = File.OpenWrite(dataFilePath);
+                dataStream.SetLength(0L);
+                await this.SaveAsync(headerStream, dataStream, fileCompressionTypeFunc);
+            }
         }
 
-        public async Task SaveAsync(Stream headerStream, Stream dataStream)
+        protected async Task SaveAsync(FileStream headerStream, FileStream dataStream, Func<IMS2File, CompressionType> fileCompressionTypeFunc)
         {
-            if (this.IsDisposed)
-            {
-                throw new ObjectDisposedException(nameof(MS2Archive));
-            }
-
             IMS2ArchiveHeaderCrypto archiveHeaderCrypto = this.CryptoRepository.GetArchiveHeaderCrypto();
             IMS2FileInfoCrypto fileInfoCrypto = this.CryptoRepository.GetFileInfoReaderCrypto();
             IMS2FileHeaderCrypto fileHeaderCrypto = this.CryptoRepository.GetFileHeaderCrypto();
@@ -229,20 +200,17 @@ namespace MS2Lib
             long fileCount = this.Files.Count;
             long offset = 0;
 
-            //var tasks = new Task<(Stream, IMS2SizeHeader)>[fileCount];
-
-            using (var fileInfoWriter = new StreamWriter(fileInfoMemoryStream, Encoding.UTF8, 1 << 10, true))
+            using (var fileInfoWriter = new StreamWriter(fileInfoMemoryStream, Encoding.ASCII, 1 << 10, true))
             {
                 foreach (IMS2File file in this.Files.Values)
                 {
-                    //tasks[i] = file.GetStreamForArchivingAsync();
                     var (fileStream, fileSize) = await file.GetStreamForArchivingAsync().ConfigureAwait(false);
 
                     await fileStream.CopyToAsync(dataStream).ConfigureAwait(false);
 
                     await fileInfoCrypto.WriteAsync(fileInfoWriter, file.Info).ConfigureAwait(false);
 
-                    IMS2FileHeader newFileHeader = new MS2FileHeader(fileSize, file.Header.Id, offset, file.Header.CompressionType);
+                    IMS2FileHeader newFileHeader = new MS2FileHeader(fileSize, file.Header.Id, offset, fileCompressionTypeFunc(file));
                     await fileHeaderCrypto.WriteAsync(fileHeaderMemoryStream, newFileHeader).ConfigureAwait(false);
 
                     offset += fileSize.EncodedSize;
@@ -257,7 +225,112 @@ namespace MS2Lib
             var (fileHeaderEncryptedStream, fileHeaderSize) = await this.CryptoRepository.GetEncryptionStreamAsync(fileHeaderMemoryStream, fileHeaderMemoryStream.Length, true).ConfigureAwait(false);
 
             // write header stream (m2h)
-            using var headerWriter = new BinaryWriter(headerStream, Encoding.UTF8, true);
+            using var headerWriter = new BinaryWriter(headerStream, Encoding.ASCII, true);
+            headerWriter.Write((uint)this.CryptoRepository.CryptoMode);
+
+            await archiveHeaderCrypto.WriteAsync(headerStream, fileInfoSize, fileHeaderSize, fileCount).ConfigureAwait(false);
+
+            using (fileInfoEncryptedStream)
+            using (fileHeaderEncryptedStream)
+            {
+                await fileInfoEncryptedStream.CopyToAsync(headerStream).ConfigureAwait(false);
+                await fileHeaderEncryptedStream.CopyToAsync(headerStream).ConfigureAwait(false);
+            }
+        }
+
+        protected async Task SaveConcurrentAsync(FileStream headerStream, string dataFilePath, Func<IMS2File, CompressionType> fileCompressionTypeFunc)
+        {
+            FileStream dataStream = File.Open(dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            dataStream.SetLength(0L);
+
+            IMS2ArchiveHeaderCrypto archiveHeaderCrypto = this.CryptoRepository.GetArchiveHeaderCrypto();
+            IMS2FileInfoCrypto fileInfoCrypto = this.CryptoRepository.GetFileInfoReaderCrypto();
+            IMS2FileHeaderCrypto fileHeaderCrypto = this.CryptoRepository.GetFileHeaderCrypto();
+
+            using var fileHeaderMemoryStream = new MemoryStream();
+
+            IMS2File[] files = this.Files.Values.ToArray();
+            long fileCount = files.Length;
+
+            // prepare for writing (encrypt if necessary) load everything in memory
+            Task<(Stream stream, IMS2SizeHeader size)>[] archivingTasks = files.Select(async file =>
+            {
+                await Task.Yield();
+
+                var (stream, size) = await file.GetStreamForArchivingAsync().ConfigureAwait(false);
+
+                if (stream is MemoryStream ms)
+                {
+                    return ((Stream)ms, size);
+                }
+                else if (stream is KeepOpenStreamProxy proxy &&
+                         proxy.Stream is MemoryStream proxyMs)
+                {
+                    return (proxy, size);
+                }
+                else
+                {
+                    var buffer = new byte[size.EncodedSize];
+                    var newMs = new MemoryStream(buffer);
+                    await stream.CopyToAsync(newMs).ConfigureAwait(false);
+                    stream.Dispose();
+                    newMs.Position = 0;
+
+                    return (newMs, size);
+                }
+            }).ToArray();
+
+            await Task.WhenAll(archivingTasks).ConfigureAwait(false);
+
+            long offset = 0;
+            Stream[] streams = new Stream[fileCount];
+            IMS2SizeHeader[] sizes = new IMS2SizeHeader[fileCount];
+            using StringWriter fileInfoWriter = new StringWriter();
+
+            // calculate final data size
+            // write raw file headers
+            for (int i = 0; i < fileCount; i++)
+            {
+                var (stream, size) = await archivingTasks[i].ConfigureAwait(false);
+                IMS2File file = files[i];
+
+                streams[i] = stream;
+                sizes[i] = size;
+
+                await fileInfoCrypto.WriteAsync(fileInfoWriter, file.Info).ConfigureAwait(false);
+
+                IMS2FileHeader newFileHeader = new MS2FileHeader(size, file.Header.Id, offset, fileCompressionTypeFunc(file));
+                await fileHeaderCrypto.WriteAsync(fileHeaderMemoryStream, newFileHeader).ConfigureAwait(false);
+
+                offset += size.EncodedSize;
+            }
+
+            // write data file
+            using (MemoryMappedFile mmf = MemoryMappedFile.CreateFromFile(dataStream, Guid.NewGuid().ToString(), offset, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, false))
+            {
+                Task[] dataWritingTasks = files.Select(async (file, i) =>
+                {
+                    await Task.Yield();
+
+                    using Stream stream = streams[i];
+                    IMS2SizeHeader size = sizes[i];
+
+                    using var mmfStream = mmf.CreateViewStream(file.Header.Offset, size.EncodedSize, MemoryMappedFileAccess.Write);
+                    await stream.CopyToAsync(mmfStream).ConfigureAwait(false);
+                }).ToArray();
+
+                await Task.WhenAll(dataWritingTasks).ConfigureAwait(false);
+            }
+
+            using var fileInfoMemoryStream = new MemoryStream(Encoding.ASCII.GetBytes(fileInfoWriter.ToString()));
+            fileHeaderMemoryStream.Position = 0;
+
+            // TODO: are those always compressed?
+            var (fileInfoEncryptedStream, fileInfoSize) = await this.CryptoRepository.GetEncryptionStreamAsync(fileInfoMemoryStream, fileInfoMemoryStream.Length, true).ConfigureAwait(false);
+            var (fileHeaderEncryptedStream, fileHeaderSize) = await this.CryptoRepository.GetEncryptionStreamAsync(fileHeaderMemoryStream, fileHeaderMemoryStream.Length, true).ConfigureAwait(false);
+
+            // write header stream (m2h)
+            using var headerWriter = new BinaryWriter(headerStream, Encoding.ASCII, true);
             headerWriter.Write((uint)this.CryptoRepository.CryptoMode);
 
             await archiveHeaderCrypto.WriteAsync(headerStream, fileInfoSize, fileHeaderSize, fileCount).ConfigureAwait(false);
@@ -290,7 +363,7 @@ namespace MS2Lib
             this.Files.Clear();
         }
 
-
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         protected virtual string DebuggerDisplay
             => $"Files = {this.Files.Count}, Name = {this.MappedDataFile}";
 

@@ -63,7 +63,7 @@ namespace MS2Lib
             {
                 this.DataStream.Position = this.Header.Offset;
 
-                return new StreamProxy(this.DataStream);
+                return new KeepOpenStreamProxy(this.DataStream);
             }
 
             if (this.DataMemoryMappedFile != null)
@@ -74,7 +74,7 @@ namespace MS2Lib
             throw new InvalidOperationException();
         }
 
-        public virtual async Task<Stream> GetStreamAsync()
+        public virtual Task<Stream> GetStreamAsync()
         {
             if (this.IsDisposed)
             {
@@ -84,13 +84,13 @@ namespace MS2Lib
             var dataStream = this.GetDataStream();
             if (this.IsDataEncrypted)
             {
-                return await this.Archive.CryptoRepository.GetDecryptionStreamAsync(dataStream, this.Header.Size, this.IsZlibCompressed).ConfigureAwait(false);
+                return this.Archive.CryptoRepository.GetDecryptionStreamAsync(dataStream, this.Header.Size, this.IsZlibCompressed);
             }
 
-            return dataStream;
+            return Task.FromResult(dataStream);
         }
 
-        public virtual async Task<(Stream stream, IMS2SizeHeader size)> GetStreamForArchivingAsync()
+        public virtual Task<(Stream stream, IMS2SizeHeader size)> GetStreamForArchivingAsync()
         {
             if (this.IsDisposed)
             {
@@ -100,10 +100,10 @@ namespace MS2Lib
             var dataStream = this.GetDataStream();
             if (this.IsDataEncrypted)
             {
-                return (dataStream, this.Header.Size);
+                return Task.FromResult((dataStream, this.Header.Size));
             }
 
-            return await this.Archive.CryptoRepository.GetEncryptionStreamAsync(dataStream, this.Header.Size.EncodedSize, this.IsZlibCompressed).ConfigureAwait(false);
+            return this.Archive.CryptoRepository.GetEncryptionStreamAsync(dataStream, this.Header.Size.EncodedSize, this.IsZlibCompressed);
         }
 
         protected static long InternalGetId(IMS2FileInfo info, IMS2FileHeader header)

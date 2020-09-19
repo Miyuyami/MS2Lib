@@ -1,21 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 
 namespace MS2Lib
 {
     public interface IMS2Archive : IDisposable, IEnumerable<IMS2File>
     {
+        ReadOnlyDictionary<long, IMS2File> FileDictionary { get; }
         IMS2ArchiveCryptoRepository CryptoRepository { get; }
         string Name { get; }
         int Count { get; }
 
         Task LoadAsync(string headerFilePath, string dataFilePath);
-        Task LoadAsync(Stream headerStream, Stream dataStream);
 
-        Task SaveAsync(string headerFilePath, string dataFilePath);
-        Task SaveAsync(Stream headerStream, Stream dataStream);
+        Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently, Func<IMS2File, CompressionType> fileCompressionTypeFunc);
 
         bool ContainsKey(long key);
         bool TryGetValue(long key, out IMS2File value);

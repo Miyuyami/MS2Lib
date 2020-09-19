@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 namespace MS2Lib
 {
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    public class StreamProxy : Stream
+    public class KeepOpenStreamProxy : Stream
     {
-        protected Stream Stream { get; }
+        public Stream Stream { get; }
 
         public override bool CanRead => this.Stream.CanRead;
         public override bool CanSeek => this.Stream.CanSeek;
@@ -32,7 +32,7 @@ namespace MS2Lib
             set => this.Stream.WriteTimeout = value;
         }
 
-        public StreamProxy(Stream stream)
+        public KeepOpenStreamProxy(Stream stream)
         {
             this.Stream = stream ?? throw new ArgumentNullException(nameof(stream));
         }
@@ -69,5 +69,16 @@ namespace MS2Lib
             this.Stream.WriteAsync(buffer, offset, count, cancellationToken);
         public override void WriteByte(byte value) =>
             this.Stream.WriteByte(value);
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            this.Stream.WriteAsync(buffer, cancellationToken);
+        public override void Write(ReadOnlySpan<byte> buffer) =>
+            this.Stream.Write(buffer);
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            this.Stream.ReadAsync(buffer, cancellationToken);
+        public override int Read(Span<byte> buffer) =>
+            this.Stream.Read(buffer);
+        public override void CopyTo(Stream destination, int bufferSize) =>
+            this.Stream.CopyTo(destination, bufferSize);
     }
 }

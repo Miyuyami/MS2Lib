@@ -52,8 +52,8 @@ namespace MS2Lib.Tests
 
         #region Load from file tests
         [TestMethod]
-        [DataRow(2, "MS2F", "archive MS2F encrypted")]
-        [DataRow(123, "NS2F", "archive NS2F encrypted")]
+        [DataRow(2, "TestData\\MS2F", "archive MS2F encrypted")]
+        [DataRow(123, "TestData\\NS2F", "archive NS2F encrypted")]
         public async Task GetAndLoadArchiveAsync_FilePaths_FileCountEqualsExpected(long fileCount, string pathWithoutExtension, string description)
         {
             long expected = fileCount;
@@ -90,7 +90,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             using var fsData = File.OpenRead(dataPath);
             string actual = await StreamToString(await repo.GetDecryptionStreamAsync(fsData, sizeMock.Object, false));
@@ -114,7 +114,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -145,7 +145,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -174,7 +174,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -212,7 +212,7 @@ namespace MS2Lib.Tests
                 sbExpected.Append(input);
                 AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.None);
             }
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             using var fsData = File.OpenRead(dataPath);
             StringBuilder sbActual = new StringBuilder();
@@ -244,7 +244,7 @@ namespace MS2Lib.Tests
                 sbExpected.Append(input);
                 AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.Zlib);
             }
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             using var fsData = File.OpenRead(dataPath);
             StringBuilder sbActual = new StringBuilder();
@@ -385,12 +385,38 @@ namespace MS2Lib.Tests
             SetFileLength(dataPath, 1 << 10);
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "overwritefile", CompressionType.None);
-            await archive.SaveAsync(headerPath, dataPath);
+            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
 
             int actualHeaderLength = File.ReadAllText(headerPath).Length;
             int actualDataLength = File.ReadAllText(dataPath).Length;
             Assert.AreEqual(expectedHeaderLength, actualHeaderLength);
             Assert.AreEqual(expectedDataLength, actualDataLength);
+        }
+        #endregion
+
+        #region Save concurrent test
+        [TestMethod]
+        [DataRow("TestData\\MS2F", "TestData\\MS2F_expectedoutput", "archive MS2F encrypted")]
+        [DataRow("TestData\\NS2F", "TestData\\NS2F_expectedoutput", "archive NS2F encrypted")]
+        public async Task SaveAsync_LoadFromExistingThenSaveWithShouldSaveConcurrentlyTrue_OutputEqualsExpected(string pathWithoutExtension, string expectedPathWithoutExtension, string description)
+        {
+            string headerPath = Path.ChangeExtension(pathWithoutExtension, MS2Archive.HeaderFileExtension);
+            string dataPath = Path.ChangeExtension(pathWithoutExtension, MS2Archive.DataFileExtension);
+            string expectedHeaderPath = Path.ChangeExtension(expectedPathWithoutExtension, MS2Archive.HeaderFileExtension);
+            string expectedDataPath = Path.ChangeExtension(expectedPathWithoutExtension, MS2Archive.DataFileExtension);
+            string outputHeaderPath = headerPath + ".out";
+            string outputDataPath = dataPath + ".out";
+
+            var archive = await MS2Archive.GetAndLoadArchiveAsync(headerPath, dataPath);
+            await archive.SaveAsync(outputHeaderPath, outputDataPath, true, f => f.Header.CompressionType);
+
+            var expectedHeaderBytes = await File.ReadAllBytesAsync(expectedHeaderPath);
+            var expectedDataBytes = await File.ReadAllBytesAsync(expectedDataPath);
+            var actualHeaderBytes = await File.ReadAllBytesAsync(outputHeaderPath);
+            var actualDataBytes = await File.ReadAllBytesAsync(outputDataPath);
+
+            CollectionAssert.AreEqual(expectedHeaderBytes, actualHeaderBytes);
+            CollectionAssert.AreEqual(expectedDataBytes, actualDataBytes);
         }
         #endregion
     }

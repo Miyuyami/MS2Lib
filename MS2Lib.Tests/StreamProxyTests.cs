@@ -14,7 +14,7 @@ namespace MS2Lib.Tests
             byte[] bytes = new byte[1024];
             rand.NextBytes(bytes);
             var ms = new MemoryStream(bytes);
-            var sp = new StreamProxy(ms);
+            var sp = new KeepOpenStreamProxy(ms);
 
             sp.Read(new byte[10], 0, 10);
             sp.Dispose();
@@ -29,7 +29,7 @@ namespace MS2Lib.Tests
             byte[] bytes = new byte[1024];
             rand.NextBytes(bytes);
             var ms = new MemoryStream(bytes);
-            var sp = new StreamProxy(ms);
+            var sp = new KeepOpenStreamProxy(ms);
 
             byte[] expectedReadBytes = new byte[10];
             ms.Read(expectedReadBytes, 0, expectedReadBytes.Length);
