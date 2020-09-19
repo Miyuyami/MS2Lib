@@ -1,153 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
-using Logger = MiscUtils.Logging.SimpleLogger;
 
 namespace MS2Lib
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public class MS2FileHeader : MS2SizeHeader, IEquatable<MS2FileHeader>
+    public class MS2FileHeader : IMS2FileHeader, IEquatable<MS2FileHeader>
     {
         public uint Id { get; }
-        public uint Offset { get; }
+        public long Offset { get; }
         public CompressionType CompressionType { get; }
+        public IMS2SizeHeader Size { get; }
 
-        private MS2FileHeader(uint encodedSize, uint compressedSize, uint size, uint id, uint offset, CompressionType compressionType) : base(encodedSize, compressedSize, size)
+        public MS2FileHeader(long size, uint id, long offset, CompressionType compressionType = CompressionType.None) :
+            this(new MS2SizeHeader(size), id, offset, compressionType)
         {
+
+        }
+
+        public MS2FileHeader(long encodedSize, long compressedSize, long size, uint id, long offset, CompressionType compressionType = CompressionType.None) :
+            this(new MS2SizeHeader(encodedSize, compressedSize, size), id, offset, compressionType)
+        {
+
+        }
+
+        public MS2FileHeader(IMS2SizeHeader size, uint id, long offset, CompressionType compressionType = CompressionType.None)
+        {
+            this.Size = size ?? throw new ArgumentNullException(nameof(size));
             this.Id = id;
             this.Offset = offset;
             this.CompressionType = compressionType;
         }
 
-        internal static MS2FileHeader Create(uint id, uint offset, CompressionType compressionType, MS2SizeHeader header)
-            => new MS2FileHeader(header.EncodedSize, header.CompressedSize, header.Size, id, offset, compressionType);
-
-        internal static async Task<MS2FileHeader> Load(MS2CryptoMode cryptoMode, Stream stream)
-        {
-            using (var br = new BinaryReader(stream, Encoding.ASCII, true))
-            {
-                switch (cryptoMode)
-                {
-                    case MS2CryptoMode.MS2F:
-                        return await CreateMS2F(br).ConfigureAwait(false);
-                    case MS2CryptoMode.NS2F:
-                        return await CreateNS2F(br).ConfigureAwait(false);
-                    default:
-                    case MS2CryptoMode.OS2F:
-                    case MS2CryptoMode.PS2F:
-                        throw new NotImplementedException();
-                }
-            }
-        }
-
-        private static Task<MS2FileHeader> CreateMS2F(BinaryReader br)
-        {
-            return Task.Run(() =>
-            {
-                uint unk = br.ReadUInt32(); // TODO: unknown/unused?
-                uint fileId = br.ReadUInt32();
-                var compressionType = (CompressionType)br.ReadUInt32();
-                uint unk2 = br.ReadUInt32(); // TODO: unknown/unused?
-                uint offset = br.ReadUInt32() | br.ReadUInt32();
-                uint encodedSize = br.ReadUInt32() | br.ReadUInt32();
-                uint compressedSize = br.ReadUInt32() | br.ReadUInt32();
-                uint size = br.ReadUInt32() | br.ReadUInt32();
-
-                if (unk != 0)
-                {
-                    Logger.Debug($"File Header unk is \"{unk}\".");
-                }
-                if (unk2 != 0)
-                {
-                    Logger.Debug($"File Header second unk is \"{unk2}\".");
-                }
-
-                return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, compressionType);
-            });
-        }
-
-        private static Task<MS2FileHeader> CreateNS2F(BinaryReader br)
-        {
-            return Task.Run(() =>
-            {
-                var compressionType = (CompressionType)br.ReadUInt32();
-                uint fileId = br.ReadUInt32();
-                uint encodedSize = br.ReadUInt32();
-                uint compressedSize = br.ReadUInt32() | br.ReadUInt32();
-                uint size = br.ReadUInt32() | br.ReadUInt32();
-                uint offset = br.ReadUInt32() | br.ReadUInt32();
-
-                return new MS2FileHeader(encodedSize, compressedSize, size, fileId, offset, compressionType);
-            });
-        }
-
-        internal async Task Save(MS2CryptoMode cryptoMode, Stream stream)
-        {
-            using (var bw = new BinaryWriter(stream, Encoding.ASCII, true))
-            {
-                switch (cryptoMode)
-                {
-                    case MS2CryptoMode.MS2F:
-                        await this.SaveMS2F(bw).ConfigureAwait(false);
-                        break;
-                    case MS2CryptoMode.NS2F:
-                        await this.SaveNS2F(bw).ConfigureAwait(false);
-                        break;
-                    default:
-                    case MS2CryptoMode.OS2F:
-                    case MS2CryptoMode.PS2F:
-                        throw new NotImplementedException();
-                }
-            }
-        }
-
-        private Task SaveMS2F(BinaryWriter bw)
-        {
-            return Task.Run(() =>
-            {
-                // unk
-                bw.Write(0u);
-                // fileId
-                bw.Write(this.Id);
-                // compressionId
-                bw.Write((uint)this.CompressionType);
-                // unk2
-                bw.Write(0u);
-                // offset
-                bw.Write(this.Offset); bw.Write(0u);
-                // encodedSize
-                bw.Write(this.EncodedSize); bw.Write(0u);
-                // compressedSize
-                bw.Write(this.CompressedSize); bw.Write(0u);
-                // size
-                bw.Write(this.Size); bw.Write(0u);
-            });
-        }
-
-        private Task SaveNS2F(BinaryWriter bw)
-        {
-            return Task.Run(() =>
-            {
-                // compressionId
-                bw.Write((uint)this.CompressionType);
-                // fileId
-                bw.Write(this.Id);
-                // encodedSize
-                bw.Write(this.EncodedSize);
-                // compressedSize
-                bw.Write(this.CompressedSize); bw.Write(0u);
-                // size
-                bw.Write(this.Size); bw.Write(0u);
-                // offset
-                bw.Write(this.Offset); bw.Write(0u);
-            });
-        }
-
-        protected override string DebuggerDisplay
-            => $"Offset = {this.Offset}, {base.DebuggerDisplay}";
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        protected virtual string DebuggerDisplay
+            => $"Offset = {this.Offset}, {this.Size.EncodedSize}->{this.Size.CompressedSize}->{this.Size.Size}";
 
         #region Equality
         public override bool Equals(object obj)
@@ -155,36 +42,33 @@ namespace MS2Lib
             return this.Equals(obj as MS2FileHeader);
         }
 
-        public bool Equals(MS2FileHeader other)
+        public virtual bool Equals(MS2FileHeader other)
         {
             return other != null &&
-                   base.Equals(other) &&
                    this.Id == other.Id &&
                    this.Offset == other.Offset &&
-                   this.CompressionType == other.CompressionType;
+                   this.CompressionType == other.CompressionType &&
+                   EqualityComparer<IMS2SizeHeader>.Default.Equals(this.Size, other.Size);
+        }
+
+        bool IEquatable<IMS2FileHeader>.Equals(IMS2FileHeader other)
+        {
+            return this.Equals(other as MS2FileHeader);
         }
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                int hashCode = -1295240622;
-                hashCode *= -1521134295 + base.GetHashCode();
-                hashCode *= -1521134295 + this.Id.GetHashCode();
-                hashCode *= -1521134295 + this.Offset.GetHashCode();
-                hashCode *= -1521134295 + this.CompressionType.GetHashCode();
-                return hashCode;
-            }
+            return HashCode.Combine(this.Id, this.Offset, this.CompressionType, this.Size);
         }
 
-        public static bool operator ==(MS2FileHeader header1, MS2FileHeader header2)
+        public static bool operator ==(MS2FileHeader left, MS2FileHeader right)
         {
-            return EqualityComparer<MS2FileHeader>.Default.Equals(header1, header2);
+            return EqualityComparer<MS2FileHeader>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(MS2FileHeader header1, MS2FileHeader header2)
+        public static bool operator !=(MS2FileHeader left, MS2FileHeader right)
         {
-            return !(header1 == header2);
+            return !(left == right);
         }
         #endregion
     }

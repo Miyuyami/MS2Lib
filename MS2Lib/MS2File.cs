@@ -3,199 +3,124 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Threading.Tasks;
-using MiscUtils.IO;
 using static MS2Lib.CryptoHelper;
-using DLogger = MiscUtils.Logging.DebugLogger;
 
 namespace MS2Lib
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public class MS2File : IDisposable
+    public class MS2File : IMS2File
     {
-        private readonly bool IsDataEncrypted;
-        private readonly MS2CryptoMode ArchiveCryptoMode;
-        private readonly MemoryMappedFile DataMemoryMappedFile;
-        private readonly Stream DataStream;
+        public IMS2Archive Archive { get; }
+        public IMS2FileInfo Info { get; }
+        public IMS2FileHeader Header { get; }
 
-        public uint Id
-        {
-            get
+        protected Stream DataStream { get; }
+        protected MemoryMappedFile DataMemoryMappedFile { get; }
+
+        public long Id { get; }
+        public string Name => this.Info.Path;
+        public bool IsDataEncrypted { get; }
+
+        protected CompressionType CompressionType => this.Header.CompressionType;
+        protected bool IsZlibCompressed =>
+            this.Header.CompressionType switch
             {
-                if (UInt32.TryParse(this.InfoHeader.Id, out uint result))
-                {
-                    return result;
-                }
-                else if (this.Header != null)
-                {
-                    return this.Header.Id;
-                }
-                else
-                {
-                    throw new Exception("The file does not have a valid ID.");
-                }
-            }
-        }
-        public string Name => this.InfoHeader.Name;
-        public CompressionType CompressionType { get; }
-        public bool IsZlibCompressed
-        {
-            get
-            {
-                switch (this.CompressionType)
-                {
-                    case CompressionType.Usm:
-                        return false;
-                    case CompressionType.Png:
-                        return false;
-                    case CompressionType.Zlib:
-                        return true;
-                    default:
-                        throw new Exception($"Unrecognised compression type [{this.CompressionType}].");
-                }
-            }
-        }
-        public MS2FileInfoHeader InfoHeader { get; }
-        /// <summary>
-        /// Property only available if the file is provided from the archive after a loading method from <see cref="MS2Archive"/> was executed.
-        /// </summary>
-        public MS2FileHeader Header { get; }
+                CompressionType.None => false,
+                CompressionType.Usm => false,
+                CompressionType.Png => false,
+                CompressionType.Zlib => true,
+                _ => throw new Exception($"Unrecognised compression type [{this.CompressionType}]."),
+            };
 
-        private MS2File(MS2FileInfoHeader infoHeader, MS2FileHeader header, MS2CryptoMode archiveCryptoMode, MemoryMappedFile dataFile)
-        {
-            this.InfoHeader = infoHeader ?? throw new ArgumentNullException(nameof(infoHeader));
-            this.Header = header ?? throw new ArgumentNullException(nameof(header));
-            this.ArchiveCryptoMode = archiveCryptoMode;
-            this.DataMemoryMappedFile = dataFile ?? throw new ArgumentNullException(nameof(dataFile));
-            this.CompressionType = this.Header.CompressionType;
-            this.IsDataEncrypted = true;
-        }
-
-        private MS2File(MS2FileInfoHeader infoHeader, MS2FileHeader header, MS2CryptoMode archiveCryptoMode, Stream dataStream)
+        public MS2File(IMS2Archive archive, Stream dataStream, IMS2FileInfo info, IMS2FileHeader header, bool isStreamEncrypted)
         {
             if (!dataStream.CanSeek)
             {
-                throw new ArgumentException("Stream must be seekable.", nameof(dataStream));
+                throw new ArgumentException("The given stream must be seekable.", nameof(dataStream));
             }
 
-            this.InfoHeader = infoHeader ?? throw new ArgumentNullException(nameof(infoHeader));
+            this.Archive = archive ?? throw new ArgumentNullException(nameof(archive));
+            this.DataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
+            this.Info = info ?? throw new ArgumentNullException(nameof(info));
             this.Header = header ?? throw new ArgumentNullException(nameof(header));
-            this.ArchiveCryptoMode = archiveCryptoMode;
-            this.DataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
-            this.CompressionType = this.Header.CompressionType;
-            this.IsDataEncrypted = true;
+            this.IsDataEncrypted = isStreamEncrypted;
+            this.Id = InternalGetId(info, header);
         }
 
-        private MS2File(MS2FileInfoHeader infoHeader, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, Stream dataStream)
+        public MS2File(IMS2Archive archive, MemoryMappedFile dataMemoryMappedFile, IMS2FileInfo info, IMS2FileHeader header, bool isStreamEncrypted)
         {
-            if (!dataStream.CanSeek)
-            {
-                throw new ArgumentException("Stream must be seekable.", nameof(dataStream));
-            }
-
-            this.InfoHeader = infoHeader ?? throw new ArgumentNullException(nameof(infoHeader));
-            this.ArchiveCryptoMode = archiveCryptoMode;
-            this.DataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
-            this.CompressionType = compressionType;
-            this.IsDataEncrypted = false;
+            this.Archive = archive ?? throw new ArgumentNullException(nameof(archive));
+            this.DataMemoryMappedFile = dataMemoryMappedFile ?? throw new ArgumentNullException(nameof(dataMemoryMappedFile));
+            this.Info = info ?? throw new ArgumentNullException(nameof(info));
+            this.Header = header ?? throw new ArgumentNullException(nameof(header));
+            this.IsDataEncrypted = isStreamEncrypted;
+            this.Id = InternalGetId(info, header);
         }
 
-        public static MS2File CreateUpdate(MS2File existing, string dataFilePath)
-            => new MS2File(existing.InfoHeader, existing.CompressionType, existing.ArchiveCryptoMode, File.OpenRead(dataFilePath));
-
-        public static MS2File CreateUpdate(MS2File existing, Stream dataStream)
-            => new MS2File(existing.InfoHeader, existing.CompressionType, existing.ArchiveCryptoMode, dataStream);
-
-        public static MS2File Create(uint id, string pathInArchive, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, string dataFilePath)
-            => Create(id, pathInArchive, compressionType, archiveCryptoMode, File.OpenRead(dataFilePath));
-
-        public static MS2File Create(uint id, string pathInArchive, CompressionType compressionType, MS2CryptoMode archiveCryptoMode, Stream dataStream)
-            => new MS2File(MS2FileInfoHeader.Create(id.ToString(), pathInArchive), compressionType, archiveCryptoMode, dataStream);
-
-        internal static async Task<MS2File> Load(MS2CryptoMode cryptoMode, Stream headerStream, Stream dataStream, MemoryMappedFile dataMemoryMappedFile)
-        {
-            MS2FileInfoHeader fileInfoHeader = await MS2FileInfoHeader.Load(headerStream).ConfigureAwait(false);
-            MS2FileHeader fileHeader = await MS2FileHeader.Load(cryptoMode, dataStream).ConfigureAwait(false);
-
-            DLogger.Write($"Id={fileInfoHeader.Id}-{fileHeader.Id}, CompressionId={fileHeader.CompressionType}, RootFolder={fileInfoHeader.RootFolderId}, Name={fileInfoHeader.Name}, Size={FileEx.FormatStorage(fileHeader.EncodedSize)}->{FileEx.FormatStorage(fileHeader.CompressedSize)}->{FileEx.FormatStorage(fileHeader.Size)}");
-
-            var file = new MS2File(fileInfoHeader, fileHeader, cryptoMode, dataMemoryMappedFile);
-
-            return file;
-        }
-
-        private (Stream Stream, bool ShouldDispose) GetDataStream()
+        protected virtual Stream GetDataStream()
         {
             if (this.DataStream != null)
             {
-                this.DataStream.Position = 0;
+                this.DataStream.Position = this.Header.Offset;
 
-                return (this.DataStream, false);
+                return new StreamProxy(this.DataStream);
             }
 
             if (this.DataMemoryMappedFile != null)
             {
-                uint size = this.IsDataEncrypted ? this.Header.EncodedSize : this.Header.Size;
-                if (size == 0)
-                {
-                    return (new MemoryStream(0), true);
-                }
-
-                Stream stream = this.DataMemoryMappedFile.CreateViewStream(this.Header.Offset, size, MemoryMappedFileAccess.Read);
-
-                return (stream, true);
+                return this.DataMemoryMappedFile.CreateViewStream(this.Header.Offset, this.Header.Size.EncodedSize, MemoryMappedFileAccess.Read);
             }
 
-            throw new Exception("Cannot aquire stream");
+            throw new InvalidOperationException();
         }
 
-        public async Task<(Stream Stream, bool ShouldDispose)> GetDecryptedStreamAsync()
+        public virtual async Task<Stream> GetStreamAsync()
         {
-            (Stream Stream, bool ShouldDispose) dataStream = this.GetDataStream();
-            if (!this.IsDataEncrypted)
+            if (this.IsDisposed)
             {
-                return dataStream;
+                throw new ObjectDisposedException(nameof(MS2File));
             }
 
-            Debug.Assert(this.Header != null);
-            try
-            {
-                Stream stream = await DecryptStreamToStreamAsync(this.ArchiveCryptoMode, this.Header, this.IsZlibCompressed, dataStream.Stream).ConfigureAwait(false);
-
-                return (stream, true);
-            }
-            finally
-            {
-                if (dataStream.ShouldDispose)
-                {
-                    dataStream.Stream.Dispose();
-                }
-            }
-        }
-
-        public async Task<(Stream Stream, bool ShouldDispose, MS2SizeHeader Header)> GetEncryptedStreamAsync()
-        {
-            (Stream dataStream, bool shouldDispose) = this.GetDataStream();
+            var dataStream = this.GetDataStream();
             if (this.IsDataEncrypted)
             {
-                return (dataStream, shouldDispose, this.Header);
+                return await this.Archive.CryptoRepository.GetDecryptionStreamAsync(dataStream, this.Header.Size, this.IsZlibCompressed).ConfigureAwait(false);
             }
 
-            Debug.Assert(this.Header == null);
-            try
-            {
-                (Stream stream, MS2SizeHeader header) = await EncryptStreamToStreamAsync(this.ArchiveCryptoMode, this.IsZlibCompressed, dataStream, (uint)dataStream.Length).ConfigureAwait(false);
+            return dataStream;
+        }
 
-                return (stream, true, header);
-            }
-            finally
+        public virtual async Task<(Stream stream, IMS2SizeHeader size)> GetStreamForArchivingAsync()
+        {
+            if (this.IsDisposed)
             {
-                if (shouldDispose)
-                {
-                    dataStream.Dispose();
-                }
+                throw new ObjectDisposedException(nameof(MS2File));
+            }
+
+            var dataStream = this.GetDataStream();
+            if (this.IsDataEncrypted)
+            {
+                return (dataStream, this.Header.Size);
+            }
+
+            return await this.Archive.CryptoRepository.GetEncryptionStreamAsync(dataStream, this.Header.Size.EncodedSize, this.IsZlibCompressed).ConfigureAwait(false);
+        }
+
+        protected static long InternalGetId(IMS2FileInfo info, IMS2FileHeader header)
+        {
+            if (Int64.TryParse(info.Id, out long result))
+            {
+                Debug.Assert(result == header.Id);
+
+                return result;
+            }
+            else
+            {
+                return header.Id;
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         private string DebuggerDisplay
             => $"Name = {this.Name}";
 
@@ -209,7 +134,6 @@ namespace MS2Lib
                 if (disposing)
                 {
                     // managed
-                    this.DataMemoryMappedFile?.Dispose();
                     this.DataStream?.Dispose();
                 }
 
@@ -219,16 +143,10 @@ namespace MS2Lib
             }
         }
 
-        //~MS2File()
-        //{
-        //    this.Dispose(false);
-        //}
-
         public void Dispose()
         {
             this.Dispose(true);
-
-            //GC.SuppressFinalize(this);
+            GC.SuppressFinalize(this);
         }
         #endregion
     }

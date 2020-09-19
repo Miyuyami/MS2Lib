@@ -7,14 +7,13 @@ namespace MS2Lib
     public class MultiArrayResource : IMultiArray
     {
         public ResourceManager ResourceManager { get; }
-        string IMultiArray.Name => this.ResourceName;
         public string ResourceName { get; }
         public int ArraySize { get; }
         public int Count { get; }
 
         private readonly Lazy<byte[][]> LazyResource; // TODO: maybe array of lazy (Lazy<byte[]>[])
 
-        public byte[] this[uint index] => this.LazyResource.Value[index % this.Count];
+        public byte[] this[long index] => this.LazyResource.Value[index % this.Count];
 
         public MultiArrayResource(ResourceManager resourceManager, string resourceName, int count, int arraySize)
         {

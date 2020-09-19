@@ -1,169 +1,126 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using Ionic.Zlib;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.IO;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Utilities.Encoders;
 
 namespace MS2Lib
 {
     public static class CryptoHelper
     {
         #region Decrypt
-        public static Task<Stream> DecryptStreamToStreamAsync(MS2CryptoMode cryptoMode, MS2SizeHeader header, bool isCompressed, Stream stream)
+        public static async Task<MemoryStream> GetDecryptionStreamAsync(Stream input, IMS2SizeHeader size, IMultiArray key, IMultiArray iv, bool zlibCompressed)
         {
-            return DecryptStreamToDataAsync(cryptoMode, header, isCompressed, stream).ContinueWith<Stream>(t => new MemoryStream(t.Result));
+            using var ms = new MemoryStream();
+
+            byte[] encodedBytes = new byte[size.EncodedSize];
+            await input.ReadAsync(encodedBytes, 0, encodedBytes.Length).ConfigureAwait(false);
+
+            var encoder = new Base64Encoder();
+            encoder.Decode(encodedBytes, 0, encodedBytes.Length, ms);
+            if (ms.Length != size.CompressedSize)
+            {
+                throw new ArgumentException("Compressed bytes from input do not match with header size.", nameof(input));
+            }
+
+            ms.Position = 0;
+            return await InternalGetDecryptionStreamAsync(ms, size, key, iv, zlibCompressed).ConfigureAwait(false);
         }
 
-        public static async Task<byte[]> DecryptStreamToDataAsync(MS2CryptoMode cryptoMode, MS2SizeHeader header, bool isCompressed, Stream stream)
+        private static async Task<MemoryStream> InternalGetDecryptionStreamAsync(Stream input, IMS2SizeHeader size, IMultiArray key, IMultiArray iv, bool zlibCompressed)
         {
-            if (header.EncodedSize == 0 || header.CompressedSize == 0 || header.Size == 0)
-            {
-                return new byte[0];
-            }
+            var cipher = CipherUtilities.GetCipher("AES/CTR/NoPadding");
+            var keyParam = ParameterUtilities.CreateKeyParameter("AES", key[(uint)size.CompressedSize]);
+            cipher.Init(true, new ParametersWithIV(keyParam, iv[(uint)size.CompressedSize]));
 
-            byte[] buffer = new byte[header.EncodedSize];
-            uint readBytes = (uint)await stream.ReadAsync(buffer, 0, (int)header.EncodedSize).ConfigureAwait(false);
-            if (readBytes != header.EncodedSize)
-            {
-                throw new Exception("Data length mismatch when reading data.");
-            }
-
-            return await DecryptDataToDataAsync(cryptoMode, header, isCompressed, buffer).ConfigureAwait(false);
+            return await InternalGetDecryptionStreamAsync(input, size, cipher, zlibCompressed).ConfigureAwait(false);
         }
 
-        public static async Task<byte[]> DecryptDataToDataAsync(MS2CryptoMode cryptoMode, MS2SizeHeader header, bool isCompressed, byte[] bytes)
+        private static async Task<MemoryStream> InternalGetDecryptionStreamAsync(Stream input, IMS2SizeHeader size, IBufferedCipher cipher, bool zlibCompressed)
         {
-            if (header.EncodedSize == 0 || header.CompressedSize == 0 || header.Size == 0)
-            {
-                return new byte[0];
-            }
+            using var cs = new CipherStream(input, cipher, null);
+            byte[] bytes = new byte[size.Size];
 
-            if (isCompressed)
+            int readBytes;
+            if (zlibCompressed)
             {
-                return await Task.Run(() => Decrypt(cryptoMode, bytes, header.CompressedSize, header.Size)).ConfigureAwait(false);
+                using var z = new ZlibStream(cs, CompressionMode.Decompress, true);
+                readBytes = await z.ReadAsync(bytes, 0, bytes.Length).ConfigureAwait(false);
             }
             else
             {
-                return await Task.Run(() => DecryptNoDecompress(cryptoMode, bytes, header.Size)).ConfigureAwait(false);
+                readBytes = await cs.ReadAsync(bytes, 0, bytes.Length).ConfigureAwait(false);
             }
-        }
 
-        private static byte[] Decrypt(MS2CryptoMode cryptoMode, byte[] src, uint compressedSize, uint size)
-        {
-            IMultiArray key;
-            IMultiArray iv;
-
-            switch (cryptoMode)
+            if (readBytes != size.Size)
             {
-                case MS2CryptoMode.MS2F:
-                    key = Cryptography.MS2F.Key;
-                    iv = Cryptography.MS2F.IV;
-                    break;
-                case MS2CryptoMode.NS2F:
-                    key = Cryptography.NS2F.Key;
-                    iv = Cryptography.NS2F.IV;
-                    break;
-                default:
-                case MS2CryptoMode.OS2F:
-                case MS2CryptoMode.PS2F:
-                    throw new NotImplementedException();
+                throw new ArgumentException("Size bytes from input do not match with header size.", nameof(input));
             }
 
-            return Decryption.Decrypt(src, size, key[compressedSize], iv[compressedSize]);
-        }
-
-        private static byte[] DecryptNoDecompress(MS2CryptoMode cryptoMode, byte[] src, uint size)
-        {
-            IMultiArray key;
-            IMultiArray iv;
-
-            switch (cryptoMode)
-            {
-                case MS2CryptoMode.MS2F:
-                    key = Cryptography.MS2F.Key;
-                    iv = Cryptography.MS2F.IV;
-                    break;
-                case MS2CryptoMode.NS2F:
-                    key = Cryptography.NS2F.Key;
-                    iv = Cryptography.NS2F.IV;
-                    break;
-                default:
-                case MS2CryptoMode.OS2F:
-                case MS2CryptoMode.PS2F:
-                    throw new NotImplementedException();
-            }
-
-            return Decryption.DecryptNoDecompress(src, size, key[size], iv[size]);
+            return new MemoryStream(bytes);
         }
         #endregion
 
         #region Encrypt
-        public static Task<(Stream Stream, MS2SizeHeader Header)> EncryptStreamToStreamAsync(MS2CryptoMode cryptoMode, bool compress, Stream stream, uint count)
+        public static async Task<(MemoryStream output, IMS2SizeHeader size)> GetEncryptionStreamAsync(Stream input, long inputSize, IMultiArray key, IMultiArray iv, bool zlibCompress)
         {
-            return EncryptStreamToDataAsync(cryptoMode, compress, stream, count).ContinueWith<(Stream, MS2SizeHeader)>(t => (new MemoryStream(t.Result.Bytes), t.Result.Header));
+            if (zlibCompress)
+            {
+                using var ms = new MemoryStream();
+                using (var z = new ZlibStream(ms, CompressionMode.Compress, CompressionLevel.BestCompression, true))
+                {
+                    byte[] inputBytes = new byte[inputSize];
+                    int read = await input.ReadAsync(inputBytes, 0, (int)inputSize).ConfigureAwait(false);
+                    if (read != inputSize)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    await z.WriteAsync(inputBytes, 0, (int)inputSize).ConfigureAwait(false);
+                }
+
+                ms.Position = 0;
+                return await InternalGetEncryptionStreamAsync(ms, ms.Length, key, iv, inputSize).ConfigureAwait(false);
+            }
+
+            return await InternalGetEncryptionStreamAsync(input, inputSize, key, iv, inputSize).ConfigureAwait(false);
         }
 
-        public static async Task<(byte[] Bytes, MS2SizeHeader Header)> EncryptStreamToDataAsync(MS2CryptoMode cryptoMode, bool compress, Stream stream, uint count)
+        private static async Task<(MemoryStream output, IMS2SizeHeader size)> InternalGetEncryptionStreamAsync(Stream input, long inputSize, IMultiArray key, IMultiArray iv, long headerSize)
         {
-            if (count == 0)
-            {
-                return (new byte[0], new MS2SizeHeader(0u, 0u, 0u));
-            }
+            var cipher = CipherUtilities.GetCipher("AES/CTR/NoPadding");
+            var keyParam = ParameterUtilities.CreateKeyParameter("AES", key[inputSize]);
+            cipher.Init(true, new ParametersWithIV(keyParam, iv[inputSize]));
 
-            byte[] buffer = new byte[count];
-            uint readBytes = (uint)await stream.ReadAsync(buffer, 0, (int)count).ConfigureAwait(false);
-            if (readBytes != count)
-            {
-                throw new Exception("Data length mismatch when reading data.");
-            }
-
-            return await EncryptDataToDataAsync(cryptoMode, compress, buffer).ConfigureAwait(false);
+            return await InternalGetEncryptionStreamAsync(input, inputSize, cipher, headerSize).ConfigureAwait(false);
         }
 
-        public static async Task<(byte[] Bytes, MS2SizeHeader Header)> EncryptDataToDataAsync(MS2CryptoMode cryptoMode, bool compress, byte[] bytes)
+        private static async Task<(MemoryStream output, IMS2SizeHeader size)> InternalGetEncryptionStreamAsync(Stream input, long inputSize, IBufferedCipher cipher, long headerSize)
         {
-            if (compress)
+            byte[] inputBytes = new byte[inputSize];
+            int read = await input.ReadAsync(inputBytes, 0, (int)inputSize).ConfigureAwait(false);
+            if (inputSize != read)
             {
-                byte[] compressedBytes = await Task.Run(() => Compress(bytes)).ConfigureAwait(false);
-                byte[] encryptedBytes = await Task.Run(() => EncryptNoCompress(cryptoMode, compressedBytes, (uint)compressedBytes.Length)).ConfigureAwait(false);
-                var header = new MS2SizeHeader((uint)encryptedBytes.Length, (uint)compressedBytes.Length, (uint)bytes.Length);
-
-                return (encryptedBytes, header);
+                throw new EndOfStreamException();
             }
-            else
-            {
-                byte[] encryptedBytes = await Task.Run(() => EncryptNoCompress(cryptoMode, bytes, (uint)bytes.Length)).ConfigureAwait(false);
-                var header = new MS2SizeHeader((uint)encryptedBytes.Length, (uint)bytes.Length, (uint)bytes.Length);
+            using var msInput = new MemoryStream(inputBytes);
 
-                return (encryptedBytes, header);
-            }
-        }
+            using var cs = new CipherStream(msInput, cipher, null);
+            using var ms = new MemoryStream();
 
-        private static byte[] Compress(byte[] src)
-        {
-            return Encryption.Compress(src);
-        }
+            var output = new MemoryStream();
+            await cs.CopyToAsync(ms).ConfigureAwait(false);
+            var data = ms.ToArray();
+            var encoder = new Base64Encoder();
 
-        private static byte[] EncryptNoCompress(MS2CryptoMode cryptoMode, byte[] src, uint compressedSize)
-        {
-            IMultiArray key;
-            IMultiArray iv;
+            encoder.Encode(data, 0, data.Length, output);
 
-            switch (cryptoMode)
-            {
-                case MS2CryptoMode.MS2F:
-                    key = Cryptography.MS2F.Key;
-                    iv = Cryptography.MS2F.IV;
-                    break;
-                case MS2CryptoMode.NS2F:
-                    key = Cryptography.NS2F.Key;
-                    iv = Cryptography.NS2F.IV;
-                    break;
-                default:
-                case MS2CryptoMode.OS2F:
-                case MS2CryptoMode.PS2F:
-                    throw new NotImplementedException();
-            }
-
-            return Encryption.EncryptNoCompress(src, key[compressedSize], iv[compressedSize]);
+            var header = new MS2SizeHeader(output.Length, inputSize, headerSize);
+            output.Position = 0;
+            return (output, header);
         }
         #endregion
     }

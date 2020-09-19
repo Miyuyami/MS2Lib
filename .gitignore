@@ -28,7 +28,7 @@ bld/
 #wwwroot/
 
 # MSTest test Results
-[Tt]est[Rr]esult*/
+**/[Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
 # NUNIT
@@ -261,4 +261,4 @@ __pycache__/
 *.pyc
 
 # Custom
-[Tt]est[Dd]ata*/
+/.sonarqube
