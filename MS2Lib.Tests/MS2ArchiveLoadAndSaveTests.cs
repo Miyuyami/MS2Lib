@@ -90,7 +90,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             using var fsData = File.OpenRead(dataPath);
             string actual = await StreamToString(await repo.GetDecryptionStreamAsync(fsData, sizeMock.Object, false));
@@ -114,7 +114,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -145,7 +145,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -174,7 +174,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -212,7 +212,7 @@ namespace MS2Lib.Tests
                 sbExpected.Append(input);
                 AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.None);
             }
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             using var fsData = File.OpenRead(dataPath);
             StringBuilder sbActual = new StringBuilder();
@@ -244,7 +244,7 @@ namespace MS2Lib.Tests
                 sbExpected.Append(input);
                 AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.Zlib);
             }
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             using var fsData = File.OpenRead(dataPath);
             StringBuilder sbActual = new StringBuilder();
@@ -385,7 +385,7 @@ namespace MS2Lib.Tests
             SetFileLength(dataPath, 1 << 10);
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "overwritefile", CompressionType.None);
-            await archive.SaveAsync(headerPath, dataPath, false, _ => CompressionType.Zlib);
+            await archive.SaveAsync(headerPath, dataPath, false);
 
             int actualHeaderLength = File.ReadAllText(headerPath).Length;
             int actualDataLength = File.ReadAllText(dataPath).Length;
@@ -408,7 +408,7 @@ namespace MS2Lib.Tests
             string outputDataPath = dataPath + ".out";
 
             var archive = await MS2Archive.GetAndLoadArchiveAsync(headerPath, dataPath);
-            await archive.SaveAsync(outputHeaderPath, outputDataPath, true, f => f.Header.CompressionType);
+            await archive.SaveAsync(outputHeaderPath, outputDataPath, true);
 
             var expectedHeaderBytes = await File.ReadAllBytesAsync(expectedHeaderPath);
             var expectedDataBytes = await File.ReadAllBytesAsync(expectedDataPath);

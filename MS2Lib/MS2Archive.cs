@@ -165,7 +165,7 @@ namespace MS2Lib
         #endregion
 
         #region SaveAsync
-        public async Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently, Func<IMS2File, CompressionType> fileCompressionTypeFunc)
+        public async Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently)
         {
             if (this.IsDisposed)
             {
@@ -178,17 +178,17 @@ namespace MS2Lib
 
             if (shouldSaveConcurrently)
             {
-                await this.SaveConcurrentAsync(headerStream, dataFilePath, fileCompressionTypeFunc);
+                await this.SaveConcurrentAsync(headerStream, dataFilePath);
             }
             else
             {
                 using var dataStream = File.OpenWrite(dataFilePath);
                 dataStream.SetLength(0L);
-                await this.SaveAsync(headerStream, dataStream, fileCompressionTypeFunc);
+                await this.SaveAsync(headerStream, dataStream);
             }
         }
 
-        protected async Task SaveAsync(FileStream headerStream, FileStream dataStream, Func<IMS2File, CompressionType> fileCompressionTypeFunc)
+        protected async Task SaveAsync(FileStream headerStream, FileStream dataStream)
         {
             IMS2ArchiveHeaderCrypto archiveHeaderCrypto = this.CryptoRepository.GetArchiveHeaderCrypto();
             IMS2FileInfoCrypto fileInfoCrypto = this.CryptoRepository.GetFileInfoReaderCrypto();
@@ -210,7 +210,7 @@ namespace MS2Lib
 
                     await fileInfoCrypto.WriteAsync(fileInfoWriter, file.Info).ConfigureAwait(false);
 
-                    IMS2FileHeader newFileHeader = new MS2FileHeader(fileSize, file.Header.Id, offset, fileCompressionTypeFunc(file));
+                    IMS2FileHeader newFileHeader = new MS2FileHeader(fileSize, file.Header.Id, offset, file.Header.CompressionType);
                     await fileHeaderCrypto.WriteAsync(fileHeaderMemoryStream, newFileHeader).ConfigureAwait(false);
 
                     offset += fileSize.EncodedSize;
@@ -238,7 +238,7 @@ namespace MS2Lib
             }
         }
 
-        protected async Task SaveConcurrentAsync(FileStream headerStream, string dataFilePath, Func<IMS2File, CompressionType> fileCompressionTypeFunc)
+        protected async Task SaveConcurrentAsync(FileStream headerStream, string dataFilePath)
         {
             FileStream dataStream = File.Open(dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             dataStream.SetLength(0L);
@@ -299,7 +299,7 @@ namespace MS2Lib
 
                 await fileInfoCrypto.WriteAsync(fileInfoWriter, file.Info).ConfigureAwait(false);
 
-                IMS2FileHeader newFileHeader = new MS2FileHeader(size, file.Header.Id, offset, fileCompressionTypeFunc(file));
+                IMS2FileHeader newFileHeader = new MS2FileHeader(size, file.Header.Id, offset, file.Header.CompressionType);
                 await fileHeaderCrypto.WriteAsync(fileHeaderMemoryStream, newFileHeader).ConfigureAwait(false);
 
                 offset += size.EncodedSize;

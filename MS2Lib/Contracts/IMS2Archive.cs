@@ -14,7 +14,7 @@ namespace MS2Lib
 
         Task LoadAsync(string headerFilePath, string dataFilePath);
 
-        Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently, Func<IMS2File, CompressionType> fileCompressionTypeFunc);
+        Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently);
 
         bool ContainsKey(long key);
         bool TryGetValue(long key, out IMS2File value);
