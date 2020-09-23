@@ -284,7 +284,7 @@ namespace MS2Lib
 
             long offset = 0;
             Stream[] streams = new Stream[fileCount];
-            IMS2SizeHeader[] sizes = new IMS2SizeHeader[fileCount];
+            IMS2FileHeader[] fileHeaders = new IMS2FileHeader[fileCount];
             using StringWriter fileInfoWriter = new StringWriter();
 
             // calculate final data size
@@ -295,11 +295,12 @@ namespace MS2Lib
                 IMS2File file = files[i];
 
                 streams[i] = stream;
-                sizes[i] = size;
 
                 await fileInfoCrypto.WriteAsync(fileInfoWriter, file.Info).ConfigureAwait(false);
 
                 IMS2FileHeader newFileHeader = new MS2FileHeader(size, file.Header.Id, offset, file.Header.CompressionType);
+                fileHeaders[i] = newFileHeader;
+
                 await fileHeaderCrypto.WriteAsync(fileHeaderMemoryStream, newFileHeader).ConfigureAwait(false);
 
                 offset += size.EncodedSize;
@@ -308,14 +309,13 @@ namespace MS2Lib
             // write data file
             using (MemoryMappedFile mmf = MemoryMappedFile.CreateFromFile(dataStream, Guid.NewGuid().ToString(), offset, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, false))
             {
-                Task[] dataWritingTasks = files.Select(async (file, i) =>
+                Task[] dataWritingTasks = fileHeaders.Select(async (fileHeader, i) =>
                 {
                     await Task.Yield();
 
                     using Stream stream = streams[i];
-                    IMS2SizeHeader size = sizes[i];
 
-                    using var mmfStream = mmf.CreateViewStream(file.Header.Offset, size.EncodedSize, MemoryMappedFileAccess.Write);
+                    using var mmfStream = mmf.CreateViewStream(fileHeader.Offset, fileHeader.Size.EncodedSize, MemoryMappedFileAccess.Write);
                     await stream.CopyToAsync(mmfStream).ConfigureAwait(false);
                 }).ToArray();
 
