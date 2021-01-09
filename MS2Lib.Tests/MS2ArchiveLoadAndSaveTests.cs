@@ -1,7 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MiscUtils;
 using Moq;
 using static MS2Lib.Tests.CryptoTestHelper;
 using static MS2Lib.Tests.TestHelper;
@@ -11,6 +13,9 @@ namespace MS2Lib.Tests
     [TestClass]
     public class MS2ArchiveLoadAndSaveTests
     {
+        private const string HeaderFileExtension = ".m2h";
+        private const string DataFileExtension = ".m2d";
+
         #region static helpers
         private static void SetFileLength(string path, long length)
         {
@@ -57,8 +62,8 @@ namespace MS2Lib.Tests
         public async Task GetAndLoadArchiveAsync_FilePaths_FileCountEqualsExpected(long fileCount, string pathWithoutExtension, string description)
         {
             long expected = fileCount;
-            string headerPath = Path.ChangeExtension(pathWithoutExtension, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(pathWithoutExtension, MS2Archive.DataFileExtension);
+            string headerPath = pathWithoutExtension + HeaderFileExtension;
+            string dataPath = pathWithoutExtension + DataFileExtension;
 
             var archive = await MS2Archive.GetAndLoadArchiveAsync(headerPath, dataPath);
             long actual = archive.Count;
@@ -80,8 +85,8 @@ namespace MS2Lib.Tests
         public async Task Save_OneFileToPath_DataEqualsInput()
         {
             const string FileName = nameof(Save_OneFileToPath_DataEqualsInput);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123" + nameof(Save_OneFileToPath_DataEqualsInput);
             string encryptedInput = "encrypteddata654" + nameof(Save_OneFileToPath_DataEqualsInput);
             var sizeMock = CreateSizeMock(20, 30, 40);
@@ -90,7 +95,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             using var fsData = File.OpenRead(dataPath);
             string actual = await StreamToString(await repo.GetDecryptionStreamAsync(fsData, sizeMock.Object, false));
@@ -101,8 +106,8 @@ namespace MS2Lib.Tests
         public async Task Save_OneFileToPath_ArchiveHeaderEqualsExpectedData()
         {
             const string FileName = nameof(Save_OneFileToPath_ArchiveHeaderEqualsExpectedData);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123" + nameof(Save_OneFileToPath_ArchiveHeaderEqualsExpectedData);
             string encryptedInput = "encrypteddata654" + nameof(Save_OneFileToPath_ArchiveHeaderEqualsExpectedData);
             var sizeMock = CreateSizeMock(1, 20, 8);
@@ -114,7 +119,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -134,8 +139,8 @@ namespace MS2Lib.Tests
         public async Task Save_OneFileToFile_FileInfoHeaderEqualsExpectedData()
         {
             const string FileName = nameof(Save_OneFileToFile_FileInfoHeaderEqualsExpectedData);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123," + nameof(Save_OneFileToFile_FileInfoHeaderEqualsExpectedData);
             string encryptedInput = "encrypteddata654," + nameof(Save_OneFileToFile_FileInfoHeaderEqualsExpectedData);
             var sizeMock = CreateSizeMock(1, 20, 8);
@@ -145,7 +150,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -163,8 +168,8 @@ namespace MS2Lib.Tests
         public async Task Save_OneFileToFile_FileDataHeaderEqualsExpected()
         {
             const string FileName = nameof(Save_OneFileToFile_FileDataHeaderEqualsExpected);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123" + nameof(Save_OneFileToFile_FileDataHeaderEqualsExpected);
             string encryptedInput = "encrypteddata654" + nameof(Save_OneFileToFile_FileDataHeaderEqualsExpected);
             var sizeMock = CreateSizeMock(1, 20, 8);
@@ -174,7 +179,7 @@ namespace MS2Lib.Tests
 
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "singlefile", CompressionType.Zlib);
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             using var fsHeader = File.OpenRead(headerPath);
             using var br = new BinaryReader(fsHeader, EncodingTest, true);
@@ -196,8 +201,8 @@ namespace MS2Lib.Tests
         public async Task Save_ThreeFilesToFile_DataEqualsExpected()
         {
             const string FileName = nameof(Save_ThreeFilesToFile_DataEqualsExpected);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123" + nameof(Save_ThreeFilesToFile_DataEqualsExpected);
             string encryptedInput = "encrypteddata654" + nameof(Save_ThreeFilesToFile_DataEqualsExpected);
             var sbExpected = new StringBuilder();
@@ -212,7 +217,7 @@ namespace MS2Lib.Tests
                 sbExpected.Append(input);
                 AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.None);
             }
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             using var fsData = File.OpenRead(dataPath);
             StringBuilder sbActual = new StringBuilder();
@@ -228,8 +233,8 @@ namespace MS2Lib.Tests
         public async Task Save_ThreeFilesCompressedToFile_DataEqualsExpected()
         {
             const string FileName = nameof(Save_ThreeFilesToFile_DataEqualsExpected);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123" + nameof(Save_ThreeFilesToFile_DataEqualsExpected);
             string encryptedInput = "encrypteddata654" + nameof(Save_ThreeFilesToFile_DataEqualsExpected);
             var sbExpected = new StringBuilder();
@@ -244,7 +249,7 @@ namespace MS2Lib.Tests
                 sbExpected.Append(input);
                 AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.Zlib);
             }
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             using var fsData = File.OpenRead(dataPath);
             StringBuilder sbActual = new StringBuilder();
@@ -257,122 +262,11 @@ namespace MS2Lib.Tests
         }
 
         [TestMethod]
-        public async Task Save_ThreeFilesToFile_ArchiveHeaderEqualsExpected()
-        {
-            Assert.Inconclusive();
-            //const string FileName = "OneFileArchive";
-            //string headerPath = (Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension));
-            //string dataPath = (Path.ChangeExtension(FileName, MS2Archive.DataFileExtension));
-            //var bundle = GetRandomCryptoDataMS2F();
-            //string input = bundle.Data;
-            //string encryptedInput = bundle.EncryptedData;
-            //var sizeMock = bundle.SizeMock;
-            //uint fileId = 1;
-            //string fileName = "name";
-            //IMS2SizeHeader expectedFileInfoSize = CreateSizeMock(28, 19, 11).Object;
-            //IMS2SizeHeader expectedFileDataSize = CreateSizeMock(28, 21, 48).Object;
-            //long expectedFileCount = 1;
-            //MS2CryptoMode expectedCryptoMode = MS2CryptoMode.MS2F;
-            //IMS2ArchiveCryptoRepository repo = Repositories.Repos[expectedCryptoMode];
-
-            //var archive = MS2Archive.GetArchiveMS2F();
-            //for (uint i = 1; i <= 3; i++)
-            //{
-            //    AddDataStringToArchive(archive, input, encryptedInput, sizeMock, i, "file" + i, CompressionType.None);
-            //}
-            //await archive.SaveAsync(headerPath, dataPath);
-
-            //using var fs = File.OpenRead(headerPath);
-            //using var br = new BinaryReader(fs, Encoding.ASCII, true);
-            //MS2CryptoMode actualCryptoMode = (MS2CryptoMode)br.ReadUInt32();
-            //Assert.AreEqual(expectedCryptoMode, actualCryptoMode);
-            //var (actualFileInfoSize, actualfileDataSize, actualFileCount) = await repo.GetArchiveHeaderCrypto().ReadAsync(fs);
-            //Assert.AreEqual(expectedFileInfoSize.EncodedSize, actualFileInfoSize.EncodedSize);
-            //Assert.AreEqual(expectedFileInfoSize.CompressedSize, actualFileInfoSize.CompressedSize);
-            //Assert.AreEqual(expectedFileInfoSize.Size, actualFileInfoSize.Size);
-            //Assert.AreEqual(expectedFileDataSize.EncodedSize, actualfileDataSize.EncodedSize);
-            //Assert.AreEqual(expectedFileDataSize.CompressedSize, actualfileDataSize.CompressedSize);
-            //Assert.AreEqual(expectedFileDataSize.Size, actualfileDataSize.Size);
-            //Assert.AreEqual(expectedFileCount, actualFileCount);
-        }
-
-        [TestMethod]
-        public async Task Save_ThreeFilesToFile_FileInfoHeaderEqualsExpected()
-        {
-            Assert.Inconclusive();
-            //const string FileName = "OneFileArchive";
-            //string headerPath = (Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension));
-            //string dataPath = (Path.ChangeExtension(FileName, MS2Archive.DataFileExtension));
-            //var bundle = GetRandomCryptoDataMS2F();
-            //string input = bundle.Data;
-            //string encryptedInput = bundle.EncryptedData;
-            //var sizeMock = bundle.SizeMock;
-            //uint fileId = 1;
-            //string fileName = "name";
-            //IMS2FileInfo expectedFileInfo = CreateFileInfoMock(fileId.ToString(), fileName).Object;
-            //IMS2ArchiveCryptoRepository repo = Repositories.Repos[MS2CryptoMode.MS2F];
-
-            //var archive = MS2Archive.GetArchiveMS2F();
-            //AddDataStringToArchive(archive, input, encryptedInput, sizeMock, fileId, fileName);
-            //await archive.SaveAsync(headerPath, dataPath);
-
-            //using var fs = File.OpenRead(headerPath);
-            //using var br = new BinaryReader(fs, Encoding.ASCII, true);
-            //MS2CryptoMode actualCryptoMode = (MS2CryptoMode)br.ReadUInt32();
-            //var (actualFileInfoSize, actualfileDataSize, actualFileCount) = await repo.GetArchiveHeaderCrypto().ReadAsync(fs);
-            //var msFileInfo = await GetDecryptionStreamAsync(fs, actualFileInfoSize, actualCryptoMode, true);
-            //using var srFileInfo = new StreamReader(msFileInfo, Encoding.ASCII, true, -1, true);
-            //IMS2FileInfo actualFileInfo = await repo.GetFileInfoReaderCrypto().ReadAsync(srFileInfo);
-            //Assert.AreEqual(expectedFileInfo.Id, actualFileInfo.Id);
-            //Assert.AreEqual(expectedFileInfo.Path, actualFileInfo.Path);
-            //Assert.AreEqual(expectedFileInfo.RootFolderId, actualFileInfo.RootFolderId);
-        }
-
-        [TestMethod]
-        public async Task Save_ThreeFilesToFile_FileDataHeaderEqualsExpected()
-        {
-            Assert.Inconclusive();
-            //const string FileName = "OneFileArchive";
-            //string headerPath = (Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension));
-            //string dataPath = (Path.ChangeExtension(FileName, MS2Archive.DataFileExtension));
-            //var bundle = GetRandomCryptoDataMS2F();
-            //string input = bundle.Data;
-            //string encryptedInput = bundle.EncryptedData;
-            //var sizeMock = bundle.SizeMock;
-            //uint expectedFileId = 1;
-            //long expectedOffset = 0;
-            //CompressionType expectedCompressionType = CompressionType.None;
-            //string fileName = "name";
-            //IMS2FileHeader expectedFileData = CreateFileHeaderMock(sizeMock, expectedFileId, expectedOffset, expectedCompressionType).Object;
-            //IMS2ArchiveCryptoRepository repo = Repositories.Repos[MS2CryptoMode.MS2F];
-
-            //var archive = MS2Archive.GetArchiveMS2F();
-            //AddDataStringToArchive(archive, input, encryptedInput, sizeMock, expectedFileId, fileName);
-            //await archive.SaveAsync(headerPath, dataPath);
-
-            //using var fs = File.OpenRead(headerPath);
-            //using var br = new BinaryReader(fs, Encoding.ASCII, true);
-            //MS2CryptoMode actualCryptoMode = (MS2CryptoMode)br.ReadUInt32();
-            //var (actualFileInfoSize, actualfileDataSize, actualFileCount) = await repo.GetArchiveHeaderCrypto().ReadAsync(fs);
-            //var msFileInfo = await GetDecryptionStreamAsync(fs, actualFileInfoSize, actualCryptoMode, true);
-            //using var srFileInfo = new StreamReader(msFileInfo, Encoding.ASCII, true, -1, true);
-            //await repo.GetFileInfoReaderCrypto().ReadAsync(srFileInfo);
-            //var msFileData = await GetDecryptionStreamAsync(fs, actualfileDataSize, actualCryptoMode, true);
-            //IMS2FileHeader actualFileData = await repo.GetFileHeaderCrypto().ReadAsync(msFileData);
-            //Assert.AreEqual(expectedFileData.Id, actualFileData.Id);
-            //Assert.AreEqual(expectedFileData.Offset, actualFileData.Offset);
-            //Assert.AreEqual(expectedFileData.CompressionType, actualFileData.CompressionType);
-            //Assert.AreEqual(expectedFileData.Size.EncodedSize, actualFileData.Size.EncodedSize);
-            //Assert.AreEqual(expectedFileData.Size.CompressedSize, actualFileData.Size.CompressedSize);
-            //Assert.AreEqual(expectedFileData.Size.Size, actualFileData.Size.Size);
-        }
-
-        [TestMethod]
         public async Task Save_ToFileOverwriteAndExpand_OutputEqualExpectedSize()
         {
             const string FileName = nameof(Save_ToFileOverwriteAndExpand_OutputEqualExpectedSize);
-            string headerPath = Path.ChangeExtension(FileName, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(FileName, MS2Archive.DataFileExtension);
+            string headerPath = FileName + HeaderFileExtension;
+            string dataPath = FileName + DataFileExtension;
             string input = "inputdata123" + nameof(Save_ToFileOverwriteAndExpand_OutputEqualExpectedSize);
             string encryptedInput = "encrypteddata654" + nameof(Save_ToFileOverwriteAndExpand_OutputEqualExpectedSize);
             var sizeMock = CreateSizeMock(1, 20, 8);
@@ -385,7 +279,7 @@ namespace MS2Lib.Tests
             SetFileLength(dataPath, 1 << 10);
             var archive = new MS2Archive(repo);
             AddDataStringToArchive(archive, input, encryptedInput, sizeMock, 1, "overwritefile", CompressionType.None);
-            await archive.SaveAsync(headerPath, dataPath, false);
+            await archive.SaveAsync(headerPath, dataPath);
 
             int actualHeaderLength = File.ReadAllText(headerPath).Length;
             int actualDataLength = File.ReadAllText(dataPath).Length;
@@ -396,19 +290,51 @@ namespace MS2Lib.Tests
 
         #region Save concurrent test
         [TestMethod]
-        [DataRow("TestData\\MS2F", "TestData\\MS2F_expectedoutput", "archive MS2F encrypted")]
-        [DataRow("TestData\\NS2F", "TestData\\NS2F_expectedoutput", "archive NS2F encrypted")]
-        public async Task SaveAsync_LoadFromExistingThenSaveWithShouldSaveConcurrentlyTrue_OutputEqualsExpected(string pathWithoutExtension, string expectedPathWithoutExtension, string description)
+        [DataRow("TestData\\MS2F", "TestData\\MS2F.out", "TestData\\MS2F_expectedoutput", "archive MS2F encrypted")]
+        [DataRow("TestData\\NS2F", "TestData\\NS2F.out", "TestData\\NS2F_expectedoutput", "archive NS2F encrypted")]
+        public async Task SaveConcurrentlyAsync_LoadFromExistingThenSave_OutputEqualsExpected(string pathWithoutExtension, string outputPathWithoutExtension, string expectedPathWithoutExtension, string description)
         {
-            string headerPath = Path.ChangeExtension(pathWithoutExtension, MS2Archive.HeaderFileExtension);
-            string dataPath = Path.ChangeExtension(pathWithoutExtension, MS2Archive.DataFileExtension);
-            string expectedHeaderPath = Path.ChangeExtension(expectedPathWithoutExtension, MS2Archive.HeaderFileExtension);
-            string expectedDataPath = Path.ChangeExtension(expectedPathWithoutExtension, MS2Archive.DataFileExtension);
-            string outputHeaderPath = headerPath + ".out";
-            string outputDataPath = dataPath + ".out";
+            string headerPath = pathWithoutExtension + HeaderFileExtension;
+            string dataPath = pathWithoutExtension + DataFileExtension;
+            string expectedHeaderPath = expectedPathWithoutExtension + HeaderFileExtension;
+            string expectedDataPath = expectedPathWithoutExtension + DataFileExtension;
+            string outputHeaderPath = outputPathWithoutExtension + HeaderFileExtension;
+            string outputDataPath = outputPathWithoutExtension + DataFileExtension;
 
             var archive = await MS2Archive.GetAndLoadArchiveAsync(headerPath, dataPath);
-            await archive.SaveAsync(outputHeaderPath, outputDataPath, true);
+            await archive.SaveConcurrentlyAsync(outputHeaderPath, outputDataPath);
+
+            var expectedHeaderBytes = await File.ReadAllBytesAsync(expectedHeaderPath);
+            var expectedDataBytes = await File.ReadAllBytesAsync(expectedDataPath);
+            var actualHeaderBytes = await File.ReadAllBytesAsync(outputHeaderPath);
+            var actualDataBytes = await File.ReadAllBytesAsync(outputDataPath);
+
+            CollectionAssert.AreEqual(expectedHeaderBytes, actualHeaderBytes);
+            CollectionAssert.AreEqual(expectedDataBytes, actualDataBytes);
+        }
+
+        [TestMethod]
+        [DataRow("TestData\\MS2F", "TestData\\MS2F_Files.out", "TestData\\MS2F_Files_expectedoutput", "TestData\\MS2F_Files", "MS2F")]
+        [DataRow("TestData\\NS2F", "TestData\\NS2F_Files.out", "TestData\\NS2F_Files_expectedoutput", "TestData\\NS2F_Files", "NS2F")]
+        public async Task SaveConcurrentlyAsync_FromEmptyAddExtractedFromExisting_OutputEqualsExpected(string pathWithoutExtension, string outputPathWithoutExtension, string expectedPathWithoutExtension, string extractFolderPath, string cryptoModeString)
+        {
+            var cryptoMode = Enum.Parse<MS2CryptoMode>(cryptoModeString, true);
+            string headerPath = pathWithoutExtension + HeaderFileExtension;
+            string dataPath = pathWithoutExtension + DataFileExtension;
+            string expectedHeaderPath = expectedPathWithoutExtension + HeaderFileExtension;
+            string expectedDataPath = expectedPathWithoutExtension + DataFileExtension;
+            string outputHeaderPath = outputPathWithoutExtension + HeaderFileExtension;
+            string outputDataPath = outputPathWithoutExtension + DataFileExtension;
+
+            await ExtractArchiveFilesAsync(headerPath, dataPath, extractFolderPath);
+
+            var archive = new MS2Archive(Repositories.Repos[cryptoMode]);
+            var filePaths = GetFilesRelative(extractFolderPath);
+            for (uint i = 0; i < filePaths.Length; i++)
+            {
+                AddAndCreateFileToArchive(archive, filePaths, i);
+            }
+            await archive.SaveConcurrentlyAsync(outputHeaderPath, outputDataPath);
 
             var expectedHeaderBytes = await File.ReadAllBytesAsync(expectedHeaderPath);
             var expectedDataBytes = await File.ReadAllBytesAsync(expectedDataPath);
@@ -419,5 +345,65 @@ namespace MS2Lib.Tests
             CollectionAssert.AreEqual(expectedDataBytes, actualDataBytes);
         }
         #endregion
+
+
+        private static async Task ExtractArchiveFilesAsync(string headerFile, string dataFile, string extractPath)
+        {
+            using IMS2Archive archive = await MS2Archive.GetAndLoadArchiveAsync(headerFile, dataFile).ConfigureAwait(false);
+
+            foreach (var file in archive)
+            {
+                await ExtractFileAsync(extractPath, file).ConfigureAwait(false);
+            }
+        }
+
+        private static async Task ExtractFileAsync(string destinationPath, IMS2File file)
+        {
+            string fileDestinationPath = Path.Combine(destinationPath, file.Name);
+
+            using Stream stream = await file.GetStreamAsync().ConfigureAwait(false);
+
+            await stream.CopyToAsync(fileDestinationPath).ConfigureAwait(false);
+        }
+
+        private static (string FullPath, string RelativePath)[] GetFilesRelative(string path)
+        {
+            if (!path.EndsWith(@"\"))
+            {
+                path += @"\";
+            }
+
+            string[] files = Directory.GetFiles(path, "*.*", SearchOption.AllDirectories);
+            var result = new (string FullPath, string RelativePath)[files.Length];
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                result[i] = (files[i], files[i].Remove(path));
+            }
+
+            return result;
+        }
+
+        private static void AddAndCreateFileToArchive(IMS2Archive archive, (string fullPath, string relativePath)[] filePaths, uint index)
+        {
+            var (filePath, relativePath) = filePaths[index];
+
+            uint id = index + 1;
+            FileStream fsFile = File.OpenRead(filePath);
+            IMS2FileInfo info = new MS2FileInfo(id.ToString(), relativePath);
+            IMS2FileHeader header = new MS2FileHeader(fsFile.Length, id, 0, GetCompressionTypeFromFileExtension(filePath));
+            IMS2File file = new MS2File(archive, fsFile, info, header, false);
+
+            archive.Add(file);
+        }
+
+        private static CompressionType GetCompressionTypeFromFileExtension(string filePath, CompressionType defaultCompressionType = CompressionType.Zlib) =>
+            (Path.GetExtension(filePath)) switch
+            {
+                ".png" => CompressionType.Png,
+                ".usm" => CompressionType.Usm,
+                ".zlib" => CompressionType.Zlib,
+                _ => defaultCompressionType,
+            };
     }
 }

@@ -15,9 +15,6 @@ namespace MS2Lib
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class MS2Archive : IMS2Archive
     {
-        public const string HeaderFileExtension = "m2h";
-        public const string DataFileExtension = "m2d";
-
         protected MemoryMappedFile MappedDataFile { get; set; }
         protected IMS2SizeHeader FileInfoHeaderSize { get; set; }
         protected IMS2SizeHeader FileDataHeaderSize { get; set; }
@@ -165,7 +162,23 @@ namespace MS2Lib
         #endregion
 
         #region SaveAsync
-        public async Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently)
+        public async Task SaveAsync(string headerFilePath, string dataFilePath)
+        {
+            if (this.IsDisposed)
+            {
+                throw new ObjectDisposedException(nameof(MS2Archive));
+            }
+
+            using var headerStream = File.OpenWrite(headerFilePath);
+            using var dataStream = File.OpenWrite(dataFilePath);
+
+            headerStream.SetLength(0L);
+            dataStream.SetLength(0L);
+
+            await this.SaveAsync(headerStream, dataStream);
+        }
+
+        public async Task SaveConcurrentlyAsync(string headerFilePath, string dataFilePath)
         {
             if (this.IsDisposed)
             {
@@ -176,16 +189,7 @@ namespace MS2Lib
 
             headerStream.SetLength(0L);
 
-            if (shouldSaveConcurrently)
-            {
-                await this.SaveConcurrentAsync(headerStream, dataFilePath);
-            }
-            else
-            {
-                using var dataStream = File.OpenWrite(dataFilePath);
-                dataStream.SetLength(0L);
-                await this.SaveAsync(headerStream, dataStream);
-            }
+            await this.SaveConcurrentAsync(headerStream, dataFilePath);
         }
 
         protected async Task SaveAsync(FileStream headerStream, FileStream dataStream)

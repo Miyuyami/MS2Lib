@@ -14,7 +14,8 @@ namespace MS2Lib
 
         Task LoadAsync(string headerFilePath, string dataFilePath);
 
-        Task SaveAsync(string headerFilePath, string dataFilePath, bool shouldSaveConcurrently);
+        Task SaveAsync(string headerFilePath, string dataFilePath);
+        Task SaveConcurrentlyAsync(string headerFilePath, string dataFilePath);
 
         bool ContainsKey(long key);
         bool TryGetValue(long key, out IMS2File value);
